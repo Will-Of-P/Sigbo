@@ -108,12 +108,12 @@
       const val = ethers.utils.parseEther(amt);
 
       setStatus('Submitting...');
-
+      // place bet and wait for receipt
       const tx = await contract.placeBetBS(side, { value: val });
       const receipt = await tx.wait();
 
       showLoading();
-
+      // try to extract event directly from receipt
       const event = receipt.events.find(e => e.event === 'TaiXiuResult');
       if (!event) {
         setStatus('No event');
