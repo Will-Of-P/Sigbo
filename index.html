@@ -1,6 +1,7 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
@@ -59,6 +60,7 @@
       'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint256 sum, bool win, uint256 payout)'
     ];
     let provider, signer, contract, side = null;
+    let highlightInterval;
 
     function setStatus(msg) {
       document.getElementById('status').innerText = msg;
@@ -107,23 +109,34 @@
       if (!amt || amt <= 0) return;
       const val = ethers.utils.parseEther(amt);
 
+      // clear any existing highlight
+      clearInterval(highlightInterval);
+      document.getElementById('underBtn').classList.remove('highlight');
+      document.getElementById('overBtn').classList.remove('highlight');
+
       setStatus('Submitting...');
-      // place bet and wait for receipt
       const tx = await contract.placeBetBS(side, { value: val });
       const receipt = await tx.wait();
 
       showLoading();
-      // try to extract event directly from receipt
+      // wait 5 seconds before showing result
+      await new Promise(res => setTimeout(res, 5000));
+
       const event = receipt.events.find(e => e.event === 'TaiXiuResult');
       if (!event) {
         setStatus('No event');
         return;
       }
 
-      // destructure args and display result
       const [player, sideRes, dice, sum, win, payout] = event.args;
       renderDice(dice);
-      setStatus(win ? 'You Won!' : 'You Lose');
+      // display win/lose and payout
+      if (win) {
+        const amount = ethers.utils.formatEther(payout);
+        setStatus(`You Won! Payout: ${amount} MON`);
+      } else {
+        setStatus('You Lose');
+      }
       highlightButton(sideRes);
     };
 
@@ -150,11 +163,11 @@
 
     function highlightButton(sideRes) {
       const btn = sideRes === 0 ? document.getElementById('underBtn') : document.getElementById('overBtn');
-      let iv = setInterval(() => btn.classList.toggle('highlight'), 500);
+      highlightInterval = setInterval(() => btn.classList.toggle('highlight'), 500);
       setTimeout(() => {
-        clearInterval(iv);
+        clearInterval(highlightInterval);
         btn.classList.remove('highlight');
-      }, 15000);
+      }, 5000);
     }
   </script>
 </body>
