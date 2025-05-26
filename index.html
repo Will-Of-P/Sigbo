@@ -49,7 +49,7 @@
     const { ethers } = window.ethers;
     const providerOptions = { walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{10143:'https://testnet-rpc.monad.xyz'}, chainId:10143 } } };
     const web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions });
-    const CHAIN_ID=10143, CONTRACT='0x1d3B14646cd14303Fe1E2DBE8f620cD4BA8fBd8f';
+    const CHAIN_ID=10143, CONTRACT='0x09F6Cc910e447239136C87166392706c3dc3Dd2a';
     const ABI=[
       'function placeBet(uint8) payable',
       'event TaiXiuResult(address, uint8, uint8[3], uint256, bool, uint256)'
