@@ -57,7 +57,8 @@
     const CONTRACT = '0x86d209D4512a846872cA28dB9C5D3B6676baBA71';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
-      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint256 sum, bool win, uint256 payout)'
+      // sum is an uint8 in your Solidity event
+      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
     ];
     let provider, signer, contract, side = null;
     let highlightInterval;
@@ -119,7 +120,6 @@
       const receipt = await tx.wait();
 
       showLoading();
-      // wait 5 seconds before showing result
       await new Promise(res => setTimeout(res, 5000));
 
       const event = receipt.events.find(e => e.event === 'TaiXiuResult');
@@ -128,15 +128,17 @@
         return;
       }
 
-      const [player, sideRes, dice, sum, win, payout] = event.args;
+      const [player, sideRes, dice, sumBn, win, payout] = event.args;
+      const sum = sumBn.toNumber();
       renderDice(dice);
-      // display win/lose and payout
+
       if (win) {
         const amount = ethers.utils.formatEther(payout);
-        setStatus(`You Won! Payout: ${amount} MON`);
+        setStatus(`You Won! Sum: ${sum}. Payout: ${amount} MON`);
       } else {
-        setStatus('You Lose');
+        setStatus(`You Lose. Sum: ${sum}`);
       }
+
       highlightButton(sideRes);
     };
 
