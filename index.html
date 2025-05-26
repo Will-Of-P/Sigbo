@@ -44,9 +44,9 @@
     const { ethers } = window.ethers;
     const providerOptions = { walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{10143:'https://testnet-rpc.monad.xyz'}, chainId:10143 } } };
     const web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions });
-    const CHAIN_ID=10143, CONTRACT='0x1d3B14646cd14303Fe1E2DBE8f620cD4BA8fBd8f';
+    const CHAIN_ID=10143, CONTRACT='0x09F6Cc910e447239136C87166392706c3dc3Dd2a';
     const ABI=[
-      'function placeBet(uint8) payable',
+      'function placeBetBS(uint8) payable',
       'event TaiXiuResult(address, uint8, uint8[3], uint256, bool, uint256)'
     ];
     let provider,signer,contract,side=null;
@@ -65,7 +65,7 @@
     document.getElementById('overBtn').onclick=()=>{side=1;document.getElementById('overBtn').classList.add('selected');document.getElementById('underBtn').classList.remove('selected');};
     document.getElementById('betBtn').onclick=async()=>{
       if(side===null){alert('Choose side');return;}const amt=document.getElementById('betAmount').value;if(!amt||amt<=0)return;const val=ethers.utils.parseEther(amt);
-      setStatus('Submitting...');const tx=await contract.placeBet(side,{value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
+      setStatus('Submitting...');const tx=await contract.placeBetBS(side,{value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
     }
     function showLoading(){const r=document.getElementById('result');r.innerHTML='';for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/spinner.png';img.className='spinning';r.appendChild(img);} }
     async function showResult(txHash){
