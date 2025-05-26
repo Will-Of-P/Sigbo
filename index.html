@@ -9,27 +9,19 @@
   <style>
     body { font-family: Arial, sans-serif; background:#f0f0f0; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
     .card { background:white; padding:2rem; border-radius:1rem; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:100%; }
-    .buttons {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 1rem;
-    }
-    .buttons button.selected {
-      border: 5px solid #ffc107; /* Highlight selection */
-    } {
-    border: 5px solid #ffc107; /* Highlight selection */
-} display:flex; justify-content:space-around; margin-bottom:1rem; }
+    .buttons { display: flex; justify-content: space-around; margin-bottom: 1rem; }
+    .buttons button.selected { border: 5px solid #ffc107; }
     .buttons button { flex:1; margin:0 .5rem; padding:.75rem; font-size:1.1rem; border:none; border-radius:.5rem; cursor:pointer; }
     #underBtn { background:#007bff; color:white; }
     #overBtn  { background:#dc3545; color:white; }
     .highlight { animation: highlightAnim 1s infinite; }
-    @keyframes highlightAnim { 0%,100%{opacity:1;}50%{opacity:.5;} }
+    @keyframes highlightAnim { 0%,100% { opacity:1; } 50% { opacity:.5; } }
     input,button { width:100%; padding:.75rem; margin-top:.5rem; font-size:1rem; border:1px solid #ccc; border-radius:.5rem; box-sizing:border-box; }
     button:disabled { background:#ccc; cursor:not-allowed; }
     .result { margin-top:1rem; display:flex; justify-content:center; gap:10px; }
     .result img { width:80px; height:80px; }
     .spinning { animation: spin 1s linear infinite; }
-    @keyframes spin { to{transform:rotate(360deg);} }
+    @keyframes spin { to { transform:rotate(360deg); } }
     #status { margin-top:1rem; color:#555; }
   </style>
 </head>
@@ -51,49 +43,134 @@
   </div>
   <script>
     const { ethers } = window.ethers;
-    const providerOptions = { walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{10143:'https://testnet-rpc.monad.xyz'}, chainId:10143 } } };
-    const web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions });
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 10143: 'https://testnet-rpc.monad.xyz' },
+          chainId: 10143
+        }
+      }
+    };
+    const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
     const CHAIN_ID = 10143;
-    const CONTRACT = '0x09F6Cc910e447239136C87166392706c3dc3Dd2a'; // updated address
+    const CONTRACT = '0x09F6Cc910e447239136C87166392706c3dc3Dd2a';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
       'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint256 sum, bool win, uint256 payout)'
     ];
-    let provider,signer,contract,side=null;
-    function setStatus(msg){document.getElementById('status').innerText=msg;}
-    async function connect(){
-      try{const inst=await web3Modal.connect();provider=new ethers.providers.Web3Provider(inst,{chainId:CHAIN_ID});const net=await provider.getNetwork();if(net.chainId!==CHAIN_ID)throw'Wrong network';signer=provider.getSigner();contract=new ethers.Contract(CONTRACT,ABI,signer);
-        document.getElementById('walletAddress').innerText=await signer.getAddress();
-        document.getElementById('btnConnect').style.display='none';document.getElementById('btnDisconnect').style.display='block';
-        document.getElementById('betAmount').disabled=false;document.getElementById('betBtn').disabled=false;
-      }catch(e){setStatus('Connect error');}
+    let provider, signer, contract, side = null;
+
+    function setStatus(msg) {
+      document.getElementById('status').innerText = msg;
     }
-    function disconnect(){web3Modal.clearCachedProvider();window.location.reload();}
-    document.getElementById('btnConnect').onclick=connect;
-    document.getElementById('btnDisconnect').onclick=disconnect;
-    document.getElementById('underBtn').onclick=()=>{side=0;document.getElementById('underBtn').classList.add('selected');document.getElementById('overBtn').classList.remove('selected');};
-    document.getElementById('overBtn').onclick=()=>{side=1;document.getElementById('overBtn').classList.add('selected');document.getElementById('underBtn').classList.remove('selected');};
-    document.getElementById('betBtn').onclick=async()=>{
-      if(side===null){alert('Choose side');return;}const amt=document.getElementById('betAmount').value;if(!amt||amt<=0)return;const val=ethers.utils.parseEther(amt);
-      setStatus('Submitting...');const tx = await contract.placeBetBS(side, {value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
+
+    async function connect() {
+      try {
+        const inst = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(inst, { chainId: CHAIN_ID });
+        const net = await provider.getNetwork();
+        if (net.chainId !== CHAIN_ID) throw 'Wrong network';
+        signer = provider.getSigner();
+        contract = new ethers.Contract(CONTRACT, ABI, signer);
+
+        document.getElementById('walletAddress').innerText = await signer.getAddress();
+        document.getElementById('btnConnect').style.display = 'none';
+        document.getElementById('btnDisconnect').style.display = 'block';
+        document.getElementById('betAmount').disabled = false;
+        document.getElementById('betBtn').disabled = false;
+      } catch (e) {
+        setStatus('Connect error');
+      }
     }
-    function showLoading(){const r=document.getElementById('result');r.innerHTML='';for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/monad.png';img.className='spinning';r.appendChild(img);} }
-    async function showResult(txHash){
+
+    function disconnect() {
+      web3Modal.clearCachedProvider();
+      window.location.reload();
+    }
+
+    document.getElementById('btnConnect').onclick = connect;
+    document.getElementById('btnDisconnect').onclick = disconnect;
+    document.getElementById('underBtn').onclick = () => {
+      side = 0;
+      document.getElementById('underBtn').classList.add('selected');
+      document.getElementById('overBtn').classList.remove('selected');
+    };
+    document.getElementById('overBtn').onclick = () => {
+      side = 1;
+      document.getElementById('overBtn').classList.add('selected');
+      document.getElementById('underBtn').classList.remove('selected');
+    };
+
+    document.getElementById('betBtn').onclick = async () => {
+      if (side === null) { alert('Choose side'); return; }
+      const amt = document.getElementById('betAmount').value;
+      if (!amt || amt <= 0) return;
+      const val = ethers.utils.parseEther(amt);
+
+      setStatus('Submitting...');
+      const tx = await contract.placeBetBS(side, { value: val });
+      await tx.wait();
+      showLoading();
+      setTimeout(() => showResult(tx.hash), 10000);
+    };
+
+    function showLoading() {
+      const r = document.getElementById('result');
+      r.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const img = document.createElement('img');
+        img.src = 'image/monad.png';
+        img.className = 'spinning';
+        r.appendChild(img);
+      }
+    }
+
+    async function showResult(txHash) {
       const filter = contract.filters.TaiXiuResult();
       const logs = await provider.getLogs({
-        ...filter,
+        address: CONTRACT,
+        topics: filter.topics,
         fromBlock: 'latest',
         toBlock: 'latest'
       });
+
       const parsed = logs
-        .map(l => { try { return contract.interface.parseLog(l); } catch { return null; } })
-        .find(e => e && e.transactionHash === txHash);(l=>{try{return contract.interface.parseLog(l);}catch{};}).find(e=>e.transactionHash===txHash);
-      if(!parsed){setStatus('No event');return;}const [player,sideRes,dice,sum,win,payout]=parsed.args;
-      const r=document.getElementById('result');r.innerHTML='';dice.forEach(d=>{const img=document.createElement('img');img.src=`image/${d}.png`;r.appendChild(img);});
-      setStatus(win?'You Won!':'You Lose');
-      const btn=sideRes==0?document.getElementById('underBtn'):document.getElementById('overBtn');
-      let t=0;const iv=setInterval(()=>btn.classList.toggle('highlight'),500);
-      setTimeout(()=>{clearInterval(iv);btn.classList.remove('highlight');},15000);
+        .map(l => {
+          try {
+            const parsedLog = contract.interface.parseLog(l);
+            parsedLog.transactionHash = l.transactionHash;
+            return parsedLog;
+          } catch (_) {
+            return null;
+          }
+        })
+        .find(evt => evt && evt.transactionHash === txHash);
+
+      if (!parsed) {
+        setStatus('No event');
+        return;
+      }
+
+      const [player, sideRes, dice, sum, win, payout] = parsed.args;
+      const r = document.getElementById('result');
+      r.innerHTML = '';
+      dice.forEach(d => {
+        const img = document.createElement('img');
+        img.src = `image/${d}.png`;
+        r.appendChild(img);
+      });
+
+      setStatus(win ? 'You Won!' : 'You Lose');
+
+      const btn = sideRes === 0
+        ? document.getElementById('underBtn')
+        : document.getElementById('overBtn');
+      let iv = setInterval(() => btn.classList.toggle('highlight'), 500);
+      setTimeout(() => {
+        clearInterval(iv);
+        btn.classList.remove('highlight');
+      }, 15000);
     }
   </script>
 </body>
