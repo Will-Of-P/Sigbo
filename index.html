@@ -10,13 +10,9 @@
     body { font-family: Arial, sans-serif; background:#f0f0f0; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
     .card { background:white; padding:2rem; border-radius:1rem; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:100%; }
     .buttons {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 1rem;
-    }
-    .buttons button.selected {
-      border: 5px solid #ffc107; /* Highlight selection */
-    } {
+    display:flex; justify-content:space-around; margin-bottom:1rem;
+}
+.buttons button.selected {
     border: 5px solid #ffc107; /* Highlight selection */
 } display:flex; justify-content:space-around; margin-bottom:1rem; }
     .buttons button { flex:1; margin:0 .5rem; padding:.75rem; font-size:1.1rem; border:none; border-radius:.5rem; cursor:pointer; }
@@ -53,11 +49,10 @@
     const { ethers } = window.ethers;
     const providerOptions = { walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{10143:'https://testnet-rpc.monad.xyz'}, chainId:10143 } } };
     const web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions });
-    const CHAIN_ID = 10143;
-    const CONTRACT = '0x09F6Cc910e447239136C87166392706c3dc3Dd2a'; // updated address
-    const ABI = [
-      'function placeBetBS(uint8 side) payable',
-      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint256 sum, bool win, uint256 payout)'
+    const CHAIN_ID=10143, CONTRACT='0x1d3B14646cd14303Fe1E2DBE8f620cD4BA8fBd8f';
+    const ABI=[
+      'function placeBet(uint8) payable',
+      'event TaiXiuResult(address, uint8, uint8[3], uint256, bool, uint256)'
     ];
     let provider,signer,contract,side=null;
     function setStatus(msg){document.getElementById('status').innerText=msg;}
@@ -75,19 +70,12 @@
     document.getElementById('overBtn').onclick=()=>{side=1;document.getElementById('overBtn').classList.add('selected');document.getElementById('underBtn').classList.remove('selected');};
     document.getElementById('betBtn').onclick=async()=>{
       if(side===null){alert('Choose side');return;}const amt=document.getElementById('betAmount').value;if(!amt||amt<=0)return;const val=ethers.utils.parseEther(amt);
-      setStatus('Submitting...');const tx = await contract.placeBetBS(side, {value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
+      setStatus('Submitting...');const tx=await contract.placeBet(side,{value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
     }
     function showLoading(){const r=document.getElementById('result');r.innerHTML='';for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/spinner.png';img.className='spinning';r.appendChild(img);} }
     async function showResult(txHash){
-      const filter = contract.filters.TaiXiuResult();
-      const logs = await provider.getLogs({
-        ...filter,
-        fromBlock: 'latest',
-        toBlock: 'latest'
-      });
-      const parsed = logs
-        .map(l => { try { return contract.interface.parseLog(l); } catch { return null; } })
-        .find(e => e && e.transactionHash === txHash);(l=>{try{return contract.interface.parseLog(l);}catch{};}).find(e=>e.transactionHash===txHash);
+      const logs=await provider.getLogs({address:CONTRACT,topics:[],fromBlock:'latest',toBlock:'latest'});
+      const parsed=logs.map(l=>{try{return contract.interface.parseLog(l);}catch{};}).find(e=>e.transactionHash===txHash);
       if(!parsed){setStatus('No event');return;}const [player,sideRes,dice,sum,win,payout]=parsed.args;
       const r=document.getElementById('result');r.innerHTML='';dice.forEach(d=>{const img=document.createElement('img');img.src=`image/${d}.png`;r.appendChild(img);});
       setStatus(win?'You Won!':'You Lose');
