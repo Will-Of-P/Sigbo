@@ -128,18 +128,18 @@
         return;
       }
 
-      const [player, sideRes, dice, sumBn, win, payout] = event.args;
-      const sum = sumBn.toNumber();
+      const [player, sideRes, dice, sum, win, payout] = event.args;
       renderDice(dice);
-
+      
+      // display win/lose, sum and payout
       if (win) {
         const amount = ethers.utils.formatEther(payout);
         setStatus(`You Won! Sum: ${sum}. Payout: ${amount} MON`);
       } else {
         setStatus(`You Lose. Sum: ${sum}`);
       }
-
       highlightButton(sideRes);
+
     };
 
     function showLoading() {
