@@ -1,6 +1,7 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
@@ -46,7 +47,7 @@
       walletconnect: {
         package: window.WalletConnectProvider.default,
         options: {
-          rpc: { 10143: 'https://testnet-rpc.monad.xyz' },
+          rpc: { 10143: 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi' },
           chainId: 10143
         }
       }
@@ -108,10 +109,23 @@
       const val = ethers.utils.parseEther(amt);
 
       setStatus('Submitting...');
+      // place bet and wait for receipt
       const tx = await contract.placeBetBS(side, { value: val });
-      await tx.wait();
+      const receipt = await tx.wait();
+
       showLoading();
-      setTimeout(() => showResult(tx.hash), 10000);
+      // try to extract event directly from receipt
+      const event = receipt.events.find(e => e.event === 'TaiXiuResult');
+      if (!event) {
+        setStatus('No event');
+        return;
+      }
+
+      // destructure args and display result
+      const [player, sideRes, dice, sum, win, payout] = event.args;
+      renderDice(dice);
+      setStatus(win ? 'You Won!' : 'You Lose');
+      highlightButton(sideRes);
     };
 
     function showLoading() {
@@ -125,33 +139,7 @@
       }
     }
 
-    async function showResult(txHash) {
-      const filter = contract.filters.TaiXiuResult();
-      const logs = await provider.getLogs({
-        address: CONTRACT,
-        topics: filter.topics,
-        fromBlock: 'latest',
-        toBlock: 'latest'
-      });
-
-      const parsed = logs
-        .map(l => {
-          try {
-            const parsedLog = contract.interface.parseLog(l);
-            parsedLog.transactionHash = l.transactionHash;
-            return parsedLog;
-          } catch (_) {
-            return null;
-          }
-        })
-        .find(evt => evt && evt.transactionHash === txHash);
-
-      if (!parsed) {
-        setStatus('No event');
-        return;
-      }
-
-      const [player, sideRes, dice, sum, win, payout] = parsed.args;
+    function renderDice(dice) {
       const r = document.getElementById('result');
       r.innerHTML = '';
       dice.forEach(d => {
@@ -159,12 +147,10 @@
         img.src = `image/${d}.png`;
         r.appendChild(img);
       });
+    }
 
-      setStatus(win ? 'You Won!' : 'You Lose');
-
-      const btn = sideRes === 0
-        ? document.getElementById('underBtn')
-        : document.getElementById('overBtn');
+    function highlightButton(sideRes) {
+      const btn = sideRes === 0 ? document.getElementById('underBtn') : document.getElementById('overBtn');
       let iv = setInterval(() => btn.classList.toggle('highlight'), 500);
       setTimeout(() => {
         clearInterval(iv);
