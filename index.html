@@ -77,7 +77,7 @@
       if(side===null){alert('Choose side');return;}const amt=document.getElementById('betAmount').value;if(!amt||amt<=0)return;const val=ethers.utils.parseEther(amt);
       setStatus('Submitting...');const tx = await contract.placeBetBS(side, {value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
     }
-    function showLoading(){const r=document.getElementById('result');r.innerHTML='';for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/spinner.png';img.className='spinning';r.appendChild(img);} }
+    function showLoading(){const r=document.getElementById('result');r.innerHTML='';for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/monad.png';img.className='spinning';r.appendChild(img);} }
     async function showResult(txHash){
       const filter = contract.filters.TaiXiuResult();
       const logs = await provider.getLogs({
