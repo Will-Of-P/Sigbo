@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f0f0f0; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    .card { background:white; padding:2rem; border-radius:1rem; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:100%; }
+    .buttons { display:flex; justify-content:space-around; margin-bottom:1rem; }
+    .buttons button { flex:1; margin:0 .5rem; padding:.75rem; font-size:1.1rem; border:none; border-radius:.5rem; cursor:pointer; }
+    #underBtn { background:#007bff; color:white; }
+    #overBtn  { background:#dc3545; color:white; }
+    .highlight { animation: highlightAnim 1s infinite; }
+    @keyframes highlightAnim { 0%,100%{opacity:1;}50%{opacity:.5;} }
+    input,button { width:100%; padding:.75rem; margin-top:.5rem; font-size:1rem; border:1px solid #ccc; border-radius:.5rem; box-sizing:border-box; }
+    button:disabled { background:#ccc; cursor:not-allowed; }
+    .result { margin-top:1rem; display:flex; justify-content:center; gap:10px; }
+    .result img { width:80px; height:80px; }
+    .spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg);} }
+    #status { margin-top:1rem; color:#555; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="connect">
+      <button id="btnConnect">Connect Wallet</button>
+      <button id="btnDisconnect" style="display:none;background:#6c757d;">Disconnect</button>
+      <p id="walletAddress">Not connected</p>
+    </div>
+    <div class="buttons">
+      <button id="underBtn">Under (3–10)</button>
+      <button id="overBtn">Over (11–18)</button>
+    </div>
+    <input type="number" id="betAmount" placeholder="Amount of MON" min="0.01" step="0.01" disabled />
+    <button id="betBtn" disabled>Bet</button>
+    <div class="result" id="result"></div>
+    <p id="status"></p>
+  </div>
+  <script>
+    const { ethers } = window.ethers;
+    const providerOptions = { walletconnect:{ package:window.WalletConnectProvider.default, options:{ rpc:{10143:'https://testnet-rpc.monad.xyz'}, chainId:10143 } } };
+    const web3Modal = new window.Web3Modal.default({ cacheProvider:true, providerOptions });
+    const CHAIN_ID=10143, CONTRACT='0x1d3B14646cd14303Fe1E2DBE8f620cD4BA8fBd8f';
+    const ABI=[
+      'function placeBet(uint8) payable',
+      'event TaiXiuResult(address, uint8, uint8[3], uint256, bool, uint256)'
+    ];
+    let provider,signer,contract,side=null;
+    function setStatus(msg){document.getElementById('status').innerText=msg;}
+    async function connect(){
+      try{const inst=await web3Modal.connect();provider=new ethers.providers.Web3Provider(inst,{chainId:CHAIN_ID});const net=await provider.getNetwork();if(net.chainId!==CHAIN_ID)throw'Wrong network';signer=provider.getSigner();contract=new ethers.Contract(CONTRACT,ABI,signer);
+        document.getElementById('walletAddress').innerText=await signer.getAddress();
+        document.getElementById('btnConnect').style.display='none';document.getElementById('btnDisconnect').style.display='block';
+        document.getElementById('betAmount').disabled=false;document.getElementById('betBtn').disabled=false;
+      }catch(e){setStatus('Connect error');}
+    }
+    function disconnect(){web3Modal.clearCachedProvider();window.location.reload();}
+    document.getElementById('btnConnect').onclick=connect;
+    document.getElementById('btnDisconnect').onclick=disconnect;
+    document.getElementById('underBtn').onclick=()=>{side=0;document.getElementById('underBtn').classList.add('selected');document.getElementById('overBtn').classList.remove('selected');};
+    document.getElementById('overBtn').onclick=()=>{side=1;document.getElementById('overBtn').classList.add('selected');document.getElementById('underBtn').classList.remove('selected');};
+    document.getElementById('betBtn').onclick=async()=>{
+      if(side===null){alert('Choose side');return;}const amt=document.getElementById('betAmount').value;if(!amt||amt<=0)return;const val=ethers.utils.parseEther(amt);
+      setStatus('Submitting...');const tx=await contract.placeBet(side,{value:val});await tx.wait();showLoading();setTimeout(()=>showResult(tx.hash),10000);
+    }
+    function showLoading(){const r=document.getElementById('result');r.innerHTML='';for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/spinner.png';img.className='spinning';r.appendChild(img);} }
+    async function showResult(txHash){
+      const logs=await provider.getLogs({address:CONTRACT,topics:[],fromBlock:'latest',toBlock:'latest'});
+      const parsed=logs.map(l=>{try{return contract.interface.parseLog(l);}catch{};}).find(e=>e.transactionHash===txHash);
+      if(!parsed){setStatus('No event');return;}const [player,sideRes,dice,sum,win,payout]=parsed.args;
+      const r=document.getElementById('result');r.innerHTML='';dice.forEach(d=>{const img=document.createElement('img');img.src=`image/${d}.png`;r.appendChild(img);});
+      setStatus(win?'You Won!':'You Lose');
+      const btn=sideRes==0?document.getElementById('underBtn'):document.getElementById('overBtn');
+      let t=0;const iv=setInterval(()=>btn.classList.toggle('highlight'),500);
+      setTimeout(()=>{clearInterval(iv);btn.classList.remove('highlight');},15000);
+    }
+  </script>
+</body>
+</html>
