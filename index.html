@@ -7,44 +7,120 @@
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background:#f0f0f0; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
-    .card { background:white; padding:2rem; border-radius:1rem; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:100%; }
-    .buttons { display: flex; justify-content: space-around; margin-bottom: 1rem; }
-    .buttons button.selected { border: 5px solid #ffc107; }
-    .buttons button { flex:1; margin:0 .5rem; padding:.75rem; font-size:1.1rem; border:none; border-radius:.5rem; cursor:pointer; }
-    #underBtn { background:#007bff; color:white; }
-    #overBtn  { background:#dc3545; color:white; }
-    .highlight { animation: highlightAnim 1s infinite; }
-    @keyframes highlightAnim { 0%,100% { opacity:1; } 50% { opacity:.5; } }
-    input,button { width:100%; padding:.75rem; margin-top:.5rem; font-size:1rem; border:1px solid #ccc; border-radius:.5rem; box-sizing:border-box; }
-    button:disabled { background:#ccc; cursor:not-allowed; }
-    .result { margin-top:1rem; display:flex; justify-content:center; gap:10px; }
-    .result img { width:80px; height:80px; }
-    .spinning { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    #status { margin-top:1rem; color:#555; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1rem;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .banner {
+      background: #ffecb3;
+      color: #665500;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      font-weight: bold;
+    }
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .buttons button {
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .buttons button:hover {
+      transform: translateY(-2px);
+    }
+    .buttons button.selected {
+      border: 3px solid #ffc107;
+    }
+    #underBtn { background: #007bff; color: white; }
+    #overBtn  { background: #dc3545; color: white; }
+    input, button {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+    button:disabled {
+      background: #e0e0e0;
+      cursor: not-allowed;
+    }
+    .result {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      min-height: 80px;
+    }
+    .result img {
+      width: 80px;
+      height: 80px;
+    }
+    .spinning {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #status {
+      color: #555;
+      min-height: 1.5rem;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>CHƠI CÓ TRÁCH NHIỆM - VUI VẺ LÀ CHÍNH.</h1>
-    <h1>KHÔNG CÓ REFUND KHI THUA!!!</h1>
-  </div>
   <div class="card">
-    <div id="connect">
+    <div class="banner">
+      CHƠI CÓ TRÁCH NHIỆM KHÔNG CÓ REFUND KHI THUA!!!
+    </div>
+
+    <div id="connect" class="section">
       <button id="btnConnect">Connect Wallet</button>
-      <button id="btnDisconnect" style="display:none;background:#6c757d;">Disconnect</button>
+      <button id="btnDisconnect" style="display:none; background:#6c757d; color:white;">Disconnect</button>
       <p id="walletAddress">Not connected</p>
     </div>
-    <div class="buttons">
-      <button id="underBtn">Under (3–10)</button>
-      <button id="overBtn">Over (11–18)</button>
+
+    <div class="section">
+      <div class="buttons">
+        <button id="underBtn">Under (3–10)</button>
+        <button id="overBtn">Over (11–18)</button>
+      </div>
+      <input type="number" id="betAmount" placeholder="Amount of MON" min="0.01" step="0.01" disabled />
+      <button id="betBtn" disabled>Place Bet</button>
     </div>
-    <input type="number" id="betAmount" placeholder="Amount of MON" min="0.01" step="0.01" disabled />
-    <button id="betBtn" disabled>Bet</button>
+
     <div class="result" id="result"></div>
     <p id="status"></p>
   </div>
+
   <script>
     const { ethers } = window.ethers;
     const providerOptions = {
@@ -61,7 +137,6 @@
     const CONTRACT = '0x86d209D4512a846872cA28dB9C5D3B6676baBA71';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
-      // sum is an uint8 in your Solidity event
       'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
     ];
     let provider, signer, contract, side = null;
@@ -97,24 +172,21 @@
 
     document.getElementById('btnConnect').onclick = connect;
     document.getElementById('btnDisconnect').onclick = disconnect;
-    document.getElementById('underBtn').onclick = () => {
-      side = 0;
-      document.getElementById('underBtn').classList.add('selected');
-      document.getElementById('overBtn').classList.remove('selected');
-    };
-    document.getElementById('overBtn').onclick = () => {
-      side = 1;
-      document.getElementById('overBtn').classList.add('selected');
-      document.getElementById('underBtn').classList.remove('selected');
-    };
+    document.getElementById('underBtn').onclick = () => selectSide(0);
+    document.getElementById('overBtn').onclick  = () => selectSide(1);
+
+    function selectSide(s) {
+      side = s;
+      document.getElementById('underBtn').classList.toggle('selected', s === 0);
+      document.getElementById('overBtn').classList.toggle('selected', s === 1);
+    }
 
     document.getElementById('betBtn').onclick = async () => {
-      if (side === null) { alert('Choose side'); return; }
+      if (side === null) { alert('Choose a side'); return; }
       const amt = document.getElementById('betAmount').value;
       if (!amt || amt <= 0) return;
       const val = ethers.utils.parseEther(amt);
 
-      // clear any existing highlight
       clearInterval(highlightInterval);
       document.getElementById('underBtn').classList.remove('highlight');
       document.getElementById('overBtn').classList.remove('highlight');
@@ -124,42 +196,33 @@
       const receipt = await tx.wait();
 
       showLoading();
-      await new Promise(res => setTimeout(res, 5000));
+      await new Promise(res => setTimeout(res, 1500));
 
       const event = receipt.events.find(e => e.event === 'TaiXiuResult');
-      if (!event) {
-        setStatus('No event');
-        return;
-      }
+      if (!event) { setStatus('No event returned'); return; }
 
-      const [player, sideRes, dice, sum, win, payout] = event.args;
+      const [, sideRes, dice, sum, win, payout] = event.args;
       renderDice(dice);
-      
-      // display win/lose, sum and payout
       if (win) {
         const amount = ethers.utils.formatEther(payout);
         setStatus(`You Won! Sum: ${sum}. Payout: ${amount} MON`);
       } else {
         setStatus(`You Lose. Sum: ${sum}`);
       }
-      highlightButton(sideRes);
-
+      highlightResult(sideRes);
     };
 
     function showLoading() {
-      const r = document.getElementById('result');
-      r.innerHTML = '';
+      const r = document.getElementById('result'); r.innerHTML = '';
       for (let i = 0; i < 3; i++) {
         const img = document.createElement('img');
-        img.src = 'image/monad.png';
-        img.className = 'spinning';
+        img.src = 'image/monad.png'; img.className = 'spinning';
         r.appendChild(img);
       }
     }
 
     function renderDice(dice) {
-      const r = document.getElementById('result');
-      r.innerHTML = '';
+      const r = document.getElementById('result'); r.innerHTML = '';
       dice.forEach(d => {
         const img = document.createElement('img');
         img.src = `image/${d}.png`;
@@ -167,7 +230,7 @@
       });
     }
 
-    function highlightButton(sideRes) {
+    function highlightResult(sideRes) {
       const btn = sideRes === 0 ? document.getElementById('underBtn') : document.getElementById('overBtn');
       highlightInterval = setInterval(() => btn.classList.toggle('highlight'), 500);
       setTimeout(() => {
