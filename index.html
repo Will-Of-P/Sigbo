@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,83 +8,27 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: Arial, sans-serif;
-      background: #eef2f5;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-      padding: 2rem;
-    }
-    .card {
-      background: white;
-      padding: 2rem;
-      border-radius: 1rem;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      text-align: center;
-    }
+    body { font-family: Arial, sans-serif; background: #eef2f5; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 2rem; }
+    .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); width: 480px; display: flex; flex-direction: column; gap: 1.5rem; text-align: center; }
     .section { display: flex; flex-direction: column; gap: 1rem; }
     .buttons { display: flex; gap: 1rem; }
-    .buttons button {
-      flex: 1;
-      padding: 0.8rem;
-      font-size: 1.1rem;
-      border: none;
-      border-radius: 0.6rem;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
+    .buttons button { flex: 1; padding: 0.8rem; font-size: 1.1rem; border: none; border-radius: 0.6rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
     .buttons button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .buttons button.selected { box-shadow: 0 0 0 3px #ffc107 inset; }
     #underBtn { background: #198cff; color: white; }
     #overBtn  { background: #ff4f4f; color: white; }
-    input, button {
-      width: 100%;
-      padding: 0.8rem;
-      border: 1px solid #ccc;
-      border-radius: 0.6rem;
-      font-size: 1rem;
-    }
+    input, button { width: 100%; padding: 0.8rem; border: 1px solid #ccc; border-radius: 0.6rem; font-size: 1rem; }
     button:disabled { background: #f0f0f0; cursor: not-allowed; }
     .result { display: flex; justify-content: center; gap: 12px; min-height: 100px; }
     .result img { width: 80px; height: 80px; }
     .spinning { animation: spin 1s linear infinite; opacity: 0.6; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #status { color: #333; min-height: 1.5rem; font-weight: bold; }
-
     /* History Styles */
-    #historyContainer {
-      margin-top: 2rem;
-      width: 480px;
-      background: white;
-      border-radius: 1rem;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-    #historyContainer h3 {
-      margin: 0;
-      padding: 1rem;
-      background: #198cff;
-      color: white;
-      font-size: 1.2rem;
-      text-align: center;
-    }
-    #historyContainer table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.95rem;
-    }
-    #historyContainer th, #historyContainer td {
-      padding: 0.75rem;
-      border-bottom: 1px solid #eee;
-      text-align: center;
-    }
+    #historyContainer { margin-top: 2rem; width: 480px; background: white; border-radius: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); overflow: hidden; }
+    #historyContainer h3 { margin: 0; padding: 1rem; background: #198cff; color: white; font-size: 1.2rem; text-align: center; }
+    #historyContainer table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    #historyContainer th, #historyContainer td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: center; }
     #historyContainer th { background: #f7f7f7; position: sticky; top: 0; z-index: 1; }
     #historyContainer tbody tr:nth-child(even) { background: #fafafa; }
     .under-cell { background: #198cff; color: white; border-radius: 0.4rem; }
@@ -114,9 +58,7 @@
   <div id="historyContainer">
     <h3>Recent 20 Games</h3>
     <table>
-      <thead>
-        <tr><th>#</th><th>Date & Time</th><th>Hand</th></tr>
-      </thead>
+      <thead><tr><th>#</th><th>Date & Time</th><th>Hand</th></tr></thead>
       <tbody id="historyBody"></tbody>
     </table>
   </div>
@@ -160,6 +102,7 @@
 
       await fetchHistory();
       contract.on('TaiXiuResult', () => fetchHistory());
+      setInterval(fetchHistory, 30000);
     }
 
     function selectSide(s) {
@@ -180,9 +123,9 @@
       const tx = await contract.placeBetBS(side, { value: val });
       const rec = await tx.wait();
       await new Promise(r => setTimeout(r, 1500));
-      
+
+      // refresh after loading
       await fetchHistory();
-      contract.on('TaiXiuResult', () => fetchHistory());
 
       const ev = rec.events.find(e => e.event === 'TaiXiuResult');
       showResult(ev.args.dice);
@@ -197,6 +140,7 @@
       for (let i=0; i<3; i++) {
         const img = document.createElement('img'); img.src = 'image/monad.png'; img.className = 'spinning'; r.appendChild(img);
       }
+      fetchHistory();
     }
 
     function showResult(dice) {
@@ -208,35 +152,20 @@
 
     async function fetchHistory() {
       if (!contract) return;
-    
-      const raw = await contract.getRecentTaiXiu(); // [{ 0: bool, 1: BigNumber }, …]
-    
-      const entries = raw
-        .map(e => ({
-          outcome: e[0],
-          ts:      e[1].toNumber()
-        }))
+
+      const raw = await contract.getRecentTaiXiu();
+      const entries = raw.map(e => ({ outcome: e[0], ts: e[1].toNumber() }))
         .filter(e => e.ts > 0)
         .sort((a, b) => b.ts - a.ts);
-    
+
       const body = document.getElementById('historyBody');
       body.innerHTML = '';
-    
+
       entries.forEach((e, i) => {
         const tr = document.createElement('tr');
-    
-        const td1 = document.createElement('td');
-        td1.innerText = i + 1;
-    
-        const td2 = document.createElement('td');
-        td2.innerText = new Date(e.ts * 1000)
-                         .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-    
-        const td3 = document.createElement('td');
-        td3.innerText = e.outcome ? 'Under' : 'Over';    
-        td3.className = e.outcome ? 'under-cell' : 'over-cell';
-    
-        tr.append(td1, td2, td3);
+        const td1 = document.createElement('td'); td1.innerText = i+1; tr.appendChild(td1);
+        const td2 = document.createElement('td'); td2.innerText = new Date(e.ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }); tr.appendChild(td2);
+        const td3 = document.createElement('td'); td3.innerText = e.outcome ? 'Under' : 'Over'; td3.className = e.outcome ? 'under-cell' : 'over-cell'; tr.appendChild(td3);
         body.appendChild(tr);
       });
     }
