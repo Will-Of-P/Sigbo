@@ -128,7 +128,7 @@
     const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
 
     const chainParams = { chainId: '0x279F', chainName: 'Monad Testnet', nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 }, rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'], blockExplorerUrls: ['https://explorer.monad.xyz'] };
-    const CONTRACT = '0x27e16641cA92988B529a7d42068cA63cC6Fde5eb';
+    const CONTRACT = '0x27e16641cA92988B529a7d42068cA63cC2Fde5eb';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
@@ -184,7 +184,7 @@
       const ev = rec.events.find(e => e.event === 'TaiXiuResult');
       showResult(ev.args.dice);
 
-      const sum = ev.args.sum.toNumber(); const win = ev.args.win;
+      const sum = Number(ev.args.sum); const win = ev.args.win;
       const payout = ethers.utils.formatEther(ev.args.payout);
       setStatus(win ? `You Win! Sum ${sum}, Payout ${payout} MON` : `You Lose. Sum ${sum}`);
     };
