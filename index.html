@@ -232,8 +232,15 @@
         .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   
       const td3 = document.createElement('td');
-      td3.innerText = e.isUnder ? 'Under' : 'Over';
-      td3.className = e.isUnder ? 'under-cell' : 'over-cell';
+  
+      if (e.isUnder == true) {
+          td3.innerText = 'Under';
+          td3.className ='under-cell';
+      }
+      else {
+          td3.innerText = 'Over';
+          td3.className = 'over-cell';
+      }
   
       tr.append(td1, td2, td3);
       body.appendChild(tr);
