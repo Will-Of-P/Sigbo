@@ -180,6 +180,9 @@
       const tx = await contract.placeBetBS(side, { value: val });
       const rec = await tx.wait();
       await new Promise(r => setTimeout(r, 1500));
+      
+      await fetchHistory();
+      contract.on('TaiXiuResult', () => fetchHistory());
 
       const ev = rec.events.find(e => e.event === 'TaiXiuResult');
       showResult(ev.args.dice);
@@ -194,8 +197,6 @@
       for (let i=0; i<3; i++) {
         const img = document.createElement('img'); img.src = 'image/monad.png'; img.className = 'spinning'; r.appendChild(img);
       }
-      fetchHistory();
-      contract.on('TaiXiuResult', () => fetchHistory());
     }
 
     function showResult(dice) {
@@ -205,39 +206,39 @@
 
     function setStatus(msg) { document.getElementById('status').innerText = msg; }
 
-async function fetchHistory() {
-  if (!contract) return;
-
-  const raw = await contract.getRecentTaiXiu();
-  const entries = raw
-    .map(e => ({
-      side: e.side.toNumber(),       // 0 = Under, 1 = Over
-      ts:   e.timestamp.toNumber()
-    }))
-    .sort((a, b) => b.ts - a.ts);
-
-  const body = document.getElementById('historyBody');
-  body.innerHTML = '';
-
-  entries.forEach((e, i) => {
-    const tr = document.createElement('tr');
-
-    const td1 = document.createElement('td');
-    td1.innerText = i + 1;
-
-    const td2 = document.createElement('td');
-    td2.innerText = new Date(e.ts * 1000)
-      .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-
-    const td3 = document.createElement('td');
-    td3.innerText = e.side === 0 ? 'Under' : 'Over';
-    td3.className = e.side === 0 ? 'under-cell' : 'over-cell';
-
-    tr.append(td1, td2, td3);
-    body.appendChild(tr);
-  });
-}
-
+    async function fetchHistory() {
+      if (!contract) return;
+    
+      const raw = await contract.getRecentTaiXiu();
+      
+      const entries = raw
+        .map(e => ({
+          isUnder: Boolean(e.dice),         // dice===1 → true, dice===0 → false
+          ts:       e.timestamp.toNumber()
+        }))
+        .sort((a, b) => b.ts - a.ts);
+    
+      const body = document.getElementById('historyBody');
+      body.innerHTML = '';
+    
+      entries.forEach((e, i) => {
+        const tr = document.createElement('tr');
+    
+        const td1 = document.createElement('td');
+        td1.innerText = i + 1;
+    
+        const td2 = document.createElement('td');
+        td2.innerText = new Date(e.ts * 1000)
+          .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    
+        const td3 = document.createElement('td');
+        td3.innerText = e.isUnder ? 'Under' : 'Over';
+        td3.className = e.isUnder ? 'under-cell' : 'over-cell';
+    
+        tr.append(td1, td2, td3);
+        body.appendChild(tr);
+      });
+    }
     async function ensureNetwork(obj) {
       try {
         const net = await obj.request({ method: 'eth_chainId' });
