@@ -24,20 +24,13 @@
       border-radius: 1rem;
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       text-align: center;
-      max-width: 400px;
+      max-width: 450px;
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 1.5rem;
     }
-    .banner {
-      background: #ffecb3;
-      color: #665500;
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      font-weight: bold;
-    }
-    .section { display: flex; flex-direction: column; gap: 0.5rem; }
+    .section { display: flex; flex-direction: column; gap: 0.75rem; }
     .buttons { display: flex; gap: 0.5rem; }
     .buttons button {
       flex: 1;
@@ -65,6 +58,38 @@
     .spinning { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #status { color: #555; min-height: 1.5rem; }
+    /* History Styles */
+    #historyContainer {
+      margin-top: 1.5rem;
+      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
+    }
+    #historyContainer h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.2rem;
+      text-align: center;
+      color: #333;
+    }
+    #historyContainer table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    #historyContainer th, #historyContainer td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+    #historyContainer th {
+      background: #f7f7f7;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #historyContainer tbody tr:nth-child(even) { background: #fafafa; }
   </style>
 </head>
 <body>
@@ -86,48 +111,38 @@
 
     <div class="result" id="result"></div>
     <p id="status"></p>
+
+    <!-- History Section -->
+    <div id="historyContainer">
+      <h3>Recent 20 Games</h3>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Date & Time</th><th>Result</th></tr>
+        </thead>
+        <tbody id="historyBody">
+          <!-- Filled dynamically -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script>
     const { ethers } = window.ethers;
     const WalletConnectProvider = window.WalletConnectProvider.default;
-
-    const chainParams = {
-      chainId: '0x279F', // 10143
-      chainName: 'Monad Testnet',
-      nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 },
-      rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'],
-      blockExplorerUrls: ['https://explorer.monad.xyz']
-    };
-    const CHAIN_ID = 10143;
-    const CONTRACT = '0x27e16641cA92988B529a7d42068cA63cC6Fde5eb';
-    const ABI = [
-      'function placeBetBS(uint8 side) payable',
-      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
-    ];
-    const MIN_BET = ethers.utils.parseEther('0.01');
-
-    const providerOptions = {
-      walletconnect: {
-        package: WalletConnectProvider,
-        options: { rpc: { [CHAIN_ID]: chainParams.rpcUrls[0] }, chainId: CHAIN_ID }
-      }
-    };
+    const providerOptions = { walletconnect: { package: WalletConnectProvider, options: { rpc: { '10143': 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi' } } } };
     const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
+
+    const chainParams = { chainId: '0x279F', chainName: 'Monad Testnet', nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 }, rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'], blockExplorerUrls: ['https://explorer.monad.xyz'] };
+    const CHAIN_ID = 10143;
+    const CONTRACT = '0x27e16641cA92988B529a7d42068cA63cC2Fde5eb';
+    const ABI = ['function placeBetBS(uint8 side) payable','function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])','event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'];
 
     let provider, signer, contract, side = null, highlightInterval;
 
-    function setStatus(msg) { document.getElementById('status').innerText = msg; }
-
-    async function ensureNetwork(obj) {
-      try {
-        const net = await obj.request({ method: 'eth_chainId' });
-        if (net !== chainParams.chainId) await obj.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainParams.chainId }] });
-      } catch (e) {
-        if (e.code === 4902) await obj.request({ method: 'wallet_addEthereumChain', params: [chainParams] });
-        else throw e;
-      }
-    }
+    document.getElementById('btnConnect').onclick = connect;
+    document.getElementById('btnDisconnect').onclick = disconnect;
+    document.getElementById('underBtn').onclick = () => selectSide(0);
+    document.getElementById('overBtn').onclick = () => selectSide(1);
 
     async function connect() {
       let inst;
@@ -143,14 +158,13 @@
       document.getElementById('walletAddress').innerText = await signer.getAddress();
       document.getElementById('btnConnect').style.display = 'none';
       document.getElementById('btnDisconnect').style.display = 'block';
+
+      await fetchHistory();
+      contract.on('TaiXiuResult', async () => await fetchHistory());
     }
 
     function disconnect() { web3Modal.clearCachedProvider(); window.location.reload(); }
-    document.getElementById('btnConnect').onclick = connect;
-    document.getElementById('btnDisconnect').onclick = disconnect;
 
-    document.getElementById('underBtn').onclick = () => selectSide(0);
-    document.getElementById('overBtn').onclick  = () => selectSide(1);
     function selectSide(s) {
       side = s;
       document.getElementById('underBtn').classList.toggle('selected', s===0);
@@ -164,28 +178,43 @@
       const amt = document.getElementById('betAmount').value;
       if (!amt) return;
       const val = ethers.utils.parseEther(amt);
-      if (val.lt(MIN_BET)) return alert(`Min bet ${ethers.utils.formatEther(MIN_BET)} MON`);
-
-      clearInterval(highlightInterval);
       setStatus('Submitting...');
       const tx = await contract.placeBetBS(side, { value: val });
-      const rec = await tx.wait();
-      showLoading();
-      await new Promise(r => setTimeout(r,1500));
-
-      const ev = rec.events.find(e=>e.event==='TaiXiuResult');
-      const [ , sideRes, dice, sum, win, payout ] = ev.args;
-      showResult(dice);
-      if(win) setStatus(`You Win! Sum ${sum}, Payout ${ethers.utils.formatEther(payout)} MON`);
-      else   setStatus(`You Lose. Sum ${sum}`);
-      highlightResult(sideRes);
+      await tx.wait();
+      setStatus('Confirmed. History will refresh shortly.');
     };
 
-    function showLoading() {
-      const r=document.getElementById('result'); r.innerHTML='';
-      for(let i=0;i<3;i++){const img=document.createElement('img');img.src='image/monad.png';img.className='spinning';r.appendChild(img);}    }
-    function showResult(dice){ const r=document.getElementById('result'); r.innerHTML=''; dice.forEach(d=>{const img=document.createElement('img');img.src=`image/${d}.png`; r.appendChild(img);});}
-    function highlightResult(res){ const btn = res===0?document.getElementById('underBtn'):document.getElementById('overBtn'); highlightInterval=setInterval(()=>btn.classList.toggle('highlight'),500); setTimeout(()=>clearInterval(highlightInterval),5000); }
+    function setStatus(msg) { document.getElementById('status').innerText = msg; }
+
+    async function fetchHistory() {
+      if (!contract) return;
+      try {
+        const data = await contract.getRecentTaiXiu();
+        const body = document.getElementById('historyBody');
+        body.innerHTML = '';
+        data.slice().reverse().forEach((entry, idx) => {
+          const row = document.createElement('tr');
+          const num = document.createElement('td'); num.innerText = idx + 1;
+          const time = document.createElement('td'); time.innerText = new Date(entry.timestamp.toNumber() * 1000).toLocaleString();
+          const result = document.createElement('td'); result.innerText = entry.side === 0 ? 'Low' : 'High';
+          row.append(num, time, result);
+          body.appendChild(row);
+        });
+        setStatus('History updated');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function ensureNetwork(obj) {
+      try {
+        const net = await obj.request({ method: 'eth_chainId' });
+        if (net !== chainParams.chainId) await obj.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainParams.chainId }] });
+      } catch (e) {
+        if (e.code === 4902) await obj.request({ method: 'wallet_addEthereumChain', params: [chainParams] });
+        else throw e;
+      }
+    }
   </script>
 </body>
 </html>
