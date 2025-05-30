@@ -209,11 +209,12 @@
     async function fetchHistory() {
       if (!contract) return;
     
-      const raw = await contract.getRecentTaiXiu();
+      const raw = await contract.getRecentTaiXiu(); // [{ 0: bool, 1: BigNumber }, …]
+    
       const entries = raw
         .map(e => ({
-          isUnder: e.dice,                // boolean
-          ts:      e.timestamp.toNumber() // number
+          outcome: e[0],
+          ts:      e[1].toNumber()
         }))
         .filter(e => e.ts > 0)
         .sort((a, b) => b.ts - a.ts);
@@ -229,11 +230,11 @@
     
         const td2 = document.createElement('td');
         td2.innerText = new Date(e.ts * 1000)
-          .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+                         .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     
         const td3 = document.createElement('td');
-        td3.innerText = e.isUnder ? 'Under' : 'Over';
-        td3.className = e.isUnder ? 'under-cell' : 'over-cell';
+        td3.innerText = e.outcome ? 'Under' : 'Over';    
+        td3.className = e.outcome ? 'under-cell' : 'over-cell';
     
         tr.append(td1, td2, td3);
         body.appendChild(tr);
