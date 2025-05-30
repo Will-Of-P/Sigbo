@@ -206,46 +206,39 @@
 
     function setStatus(msg) { document.getElementById('status').innerText = msg; }
 
-  async function fetchHistory() {
-    if (!contract) return;
-  
-    const raw = await contract.getRecentTaiXiu();
-  
-    const entries = raw
-      .map(e => ({
-        isUnder: e.dice,
-        ts:      e.timestamp.toNumber()
-      }))
-      .sort((a, b) => b.ts - a.ts);
-  
-    const body = document.getElementById('historyBody');
-    body.innerHTML = '';
-  
-    entries.forEach((e, i) => {
-      const tr = document.createElement('tr');
-  
-      const td1 = document.createElement('td');
-      td1.innerText = i + 1;
-  
-      const td2 = document.createElement('td');
-      td2.innerText = new Date(e.ts * 1000)
-        .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-  
-      const td3 = document.createElement('td');
-  
-      if (e.isUnder == true) {
-          td3.innerText = 'Under';
-          td3.className ='under-cell';
-      }
-      else {
-          td3.innerText = 'Over';
-          td3.className = 'over-cell';
-      }
-  
-      tr.append(td1, td2, td3);
-      body.appendChild(tr);
-    });
-  }
+    async function fetchHistory() {
+      if (!contract) return;
+    
+      const raw = await contract.getRecentTaiXiu();
+      const entries = raw
+        .map(e => ({
+          isUnder: e.dice,                // boolean
+          ts:      e.timestamp.toNumber() // number
+        }))
+        .filter(e => e.ts > 0)
+        .sort((a, b) => b.ts - a.ts);
+    
+      const body = document.getElementById('historyBody');
+      body.innerHTML = '';
+    
+      entries.forEach((e, i) => {
+        const tr = document.createElement('tr');
+    
+        const td1 = document.createElement('td');
+        td1.innerText = i + 1;
+    
+        const td2 = document.createElement('td');
+        td2.innerText = new Date(e.ts * 1000)
+          .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    
+        const td3 = document.createElement('td');
+        td3.innerText = e.isUnder ? 'Under' : 'Over';
+        td3.className = e.isUnder ? 'under-cell' : 'over-cell';
+    
+        tr.append(td1, td2, td3);
+        body.appendChild(tr);
+      });
+    }
 
     async function ensureNetwork(obj) {
       try {
