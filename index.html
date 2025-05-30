@@ -12,9 +12,8 @@
       font-family: Arial, sans-serif;
       background: #eef2f5;
       display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
       margin: 0;
       padding: 2rem;
     }
@@ -23,11 +22,11 @@
       padding: 2rem;
       border-radius: 1rem;
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      text-align: center;
       width: 480px;
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+      text-align: center;
     }
     .section { display: flex; flex-direction: column; gap: 1rem; }
     .buttons { display: flex; gap: 1rem; }
@@ -42,7 +41,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     .buttons button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .buttons button.selected { border: 3px solid #ffc107; }
+    .buttons button.selected { box-shadow: 0 0 0 3px #ffc107 inset; }
     #underBtn { background: #198cff; color: white; }
     #overBtn  { background: #ff4f4f; color: white; }
     input, button {
@@ -58,6 +57,8 @@
     .spinning { animation: spin 1s linear infinite; opacity: 0.6; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #status { color: #333; min-height: 1.5rem; font-weight: bold; }
+
+    /* History Styles */
     #historyContainer {
       margin-top: 2rem;
       width: 480px;
@@ -84,13 +85,10 @@
       border-bottom: 1px solid #eee;
       text-align: center;
     }
-    #historyContainer th {
-      background: #f7f7f7;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
+    #historyContainer th { background: #f7f7f7; position: sticky; top: 0; z-index: 1; }
     #historyContainer tbody tr:nth-child(even) { background: #fafafa; }
+    .under-cell { background: #198cff; color: white; border-radius: 0.4rem; }
+    .over-cell { background: #ff4f4f; color: white; border-radius: 0.4rem; }
   </style>
 </head>
 <body>
@@ -109,7 +107,7 @@
       <button id="betBtn" disabled>Place Bet</button>
     </div>
     <div class="result" id="result"></div>
-    <p id="status"></p>
+    <p id="status">&nbsp;</p>
   </div>
 
   <!-- History Section -->
@@ -130,7 +128,7 @@
     const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
 
     const chainParams = { chainId: '0x279F', chainName: 'Monad Testnet', nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 }, rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'], blockExplorerUrls: ['https://explorer.monad.xyz'] };
-    const CONTRACT = '0x27e16641cA92988B529a7d42068cA63cC6Fde5eb';
+    const CONTRACT = '0x27e16641cA92988B529a7d42068cA63cC2Fde5eb';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
@@ -148,8 +146,7 @@
       let inst;
       if (window.ethereum) {
         inst = window.ethereum;
-        try { await ensureNetwork(inst); await inst.request({ method: 'eth_requestAccounts' }); }
-        catch { inst = await web3Modal.connect(); }
+        try { await ensureNetwork(inst); await inst.request({ method: 'eth_requestAccounts' }); } catch { inst = await web3Modal.connect(); }
       } else inst = await web3Modal.connect();
 
       await ensureNetwork(inst);
@@ -175,28 +172,19 @@
 
     document.getElementById('betBtn').onclick = async () => {
       if (side === null) return alert('Choose a side');
-      const amt = document.getElementById('betAmount').value;
-      if (!amt) return;
+      const amt = document.getElementById('betAmount').value; if (!amt) return;
       const val = ethers.utils.parseEther(amt);
 
-      // show spinning dice UI
-      showLoading();
-      setStatus('Waiting for result...');
+      showLoading(); setStatus('Waiting for result...');
 
       const tx = await contract.placeBetBS(side, { value: val });
       const rec = await tx.wait();
-
-      // delay for spin
       await new Promise(r => setTimeout(r, 1500));
 
-      // parse event
       const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-      const dice = ev.args.dice;
-      showResult(dice);
+      showResult(ev.args.dice);
 
-      // update status
-      const sum = ev.args.sum.toNumber();
-      const win = ev.args.win;
+      const sum = ev.args.sum.toNumber(); const win = ev.args.win;
       const payout = ethers.utils.formatEther(ev.args.payout);
       setStatus(win ? `You Win! Sum ${sum}, Payout ${payout} MON` : `You Lose. Sum ${sum}`);
     };
@@ -204,31 +192,29 @@
     function showLoading() {
       const r = document.getElementById('result'); r.innerHTML = '';
       for (let i=0; i<3; i++) {
-        const img = document.createElement('img');
-        img.src = 'image/monad.png'; img.className = 'spinning';
-        r.appendChild(img);
+        const img = document.createElement('img'); img.src = 'image/monad.png'; img.className = 'spinning'; r.appendChild(img);
       }
     }
 
     function showResult(dice) {
       const r = document.getElementById('result'); r.innerHTML = '';
-      dice.forEach(d => {
-        const img = document.createElement('img'); img.src = `image/${d}.png`;
-        r.appendChild(img);
-      });
+      dice.forEach(d => { const img = document.createElement('img'); img.src = `image/${d}.png`; r.appendChild(img); });
     }
 
     function setStatus(msg) { document.getElementById('status').innerText = msg; }
 
     async function fetchHistory() {
       if (!contract) return;
-      const data = await contract.getRecentTaiXiu();
+      const raw = await contract.getRecentTaiXiu();
+      const entries = raw.map(e => ({ side: e.side, ts: e.timestamp.toNumber() }));
+      entries.sort((a,b) => b.ts - a.ts);
       const body = document.getElementById('historyBody'); body.innerHTML = '';
-      data.slice().reverse().forEach((e, i) => {
+      entries.forEach((e, i) => {
         const tr = document.createElement('tr');
         const td1 = document.createElement('td'); td1.innerText = i+1;
-        const td2 = document.createElement('td'); td2.innerText = new Date(e.timestamp.toNumber()*1000).toLocaleString();
+        const td2 = document.createElement('td'); td2.innerText = new Date(e.ts * 1000).toLocaleString();
         const td3 = document.createElement('td'); td3.innerText = e.side===0 ? 'Under' : 'Over';
+        td3.className = e.side===0 ? 'under-cell' : 'over-cell';
         tr.append(td1, td2, td3); body.appendChild(tr);
       });
     }
