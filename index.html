@@ -194,7 +194,7 @@
       for (let i=0; i<3; i++) {
         const img = document.createElement('img'); img.src = 'image/monad.png'; img.className = 'spinning'; r.appendChild(img);
       }
-      await fetchHistory();
+      fetchHistory();
       contract.on('TaiXiuResult', () => fetchHistory());
     }
 
