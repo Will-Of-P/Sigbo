@@ -128,7 +128,7 @@
     const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
 
     const chainParams = { chainId: '0x279F', chainName: 'Monad Testnet', nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 }, rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'], blockExplorerUrls: ['https://explorer.monad.xyz'] };
-    const CONTRACT = '0x0F95078cAbb1f1D1b6640638112Bf72e39F09A4f';
+    const CONTRACT = '0x1C538a1E0F0D5a8430010315b9659b80Ba99E9E1';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
@@ -206,39 +206,40 @@
 
     function setStatus(msg) { document.getElementById('status').innerText = msg; }
 
-    async function fetchHistory() {
-      if (!contract) return;
-    
-      const raw = await contract.getRecentTaiXiu();
-      
-      const entries = raw
-        .map(e => ({
-          isUnder: Boolean(e.dice),         // dice===1 → true, dice===0 → false
-          ts:       e.timestamp.toNumber()
-        }))
-        .sort((a, b) => b.ts - a.ts);
-    
-      const body = document.getElementById('historyBody');
-      body.innerHTML = '';
-    
-      entries.forEach((e, i) => {
-        const tr = document.createElement('tr');
-    
-        const td1 = document.createElement('td');
-        td1.innerText = i + 1;
-    
-        const td2 = document.createElement('td');
-        td2.innerText = new Date(e.ts * 1000)
-          .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-    
-        const td3 = document.createElement('td');
-        td3.innerText = e.isUnder ? 'Under' : 'Over';
-        td3.className = e.isUnder ? 'under-cell' : 'over-cell';
-    
-        tr.append(td1, td2, td3);
-        body.appendChild(tr);
-      });
-    }
+  async function fetchHistory() {
+    if (!contract) return;
+  
+    const raw = await contract.getRecentTaiXiu();
+  
+    const entries = raw
+      .map(e => ({
+        isUnder: e.dice,
+        ts:      e.timestamp.toNumber()
+      }))
+      .sort((a, b) => b.ts - a.ts);
+  
+    const body = document.getElementById('historyBody');
+    body.innerHTML = '';
+  
+    entries.forEach((e, i) => {
+      const tr = document.createElement('tr');
+  
+      const td1 = document.createElement('td');
+      td1.innerText = i + 1;
+  
+      const td2 = document.createElement('td');
+      td2.innerText = new Date(e.ts * 1000)
+        .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  
+      const td3 = document.createElement('td');
+      td3.innerText = e.isUnder ? 'Under' : 'Over';
+      td3.className = e.isUnder ? 'under-cell' : 'over-cell';
+  
+      tr.append(td1, td2, td3);
+      body.appendChild(tr);
+    });
+  }
+
     async function ensureNetwork(obj) {
       try {
         const net = await obj.request({ method: 'eth_chainId' });
