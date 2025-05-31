@@ -88,6 +88,7 @@
     const CONTRACT2 = '0x3Abf40d0fCEEFAC1cb44a86655624D5e5E929827';
 
     const ABI1 = [
+      'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
       'function getCurrentRound() view returns (uint256,bool,uint256,uint256)',
       'function roundDuration() view returns (uint256)'
     ];
@@ -156,10 +157,11 @@
       showLoading();
       document.getElementById('status').innerText = 'Waiting for result...';
 
-      const selector = ethers.utils.id("placeBet(bool)").slice(0, 10);
+      // Use hardcoded selector 0xcdefd971
+      const selector = '0xcdefd971';
       const paddedArg = side
-        ? "0000000000000000000000000000000000000000000000000000000000000001"
-        : "0000000000000000000000000000000000000000000000000000000000000000";
+        ? '0000000000000000000000000000000000000000000000000000000000000001'
+        : '0000000000000000000000000000000000000000000000000000000000000000';
       const dataPayload = selector + paddedArg;
 
       try {
@@ -212,8 +214,16 @@
     }
 
     async function fetchHistory() {
-      if (!contract2) return;
+      if (!contract1 || !contract2) return;
       try {
+        const raw1 = await contract1.getRecentTaiXiu();
+        const hist1 = raw1
+          .map(e => ({
+            ts: e.timestamp.toNumber(),
+            under: e.side === 0
+          }))
+          .filter(e => e.ts > 0);
+
         const raw2 = await contract2.getRecentHistory();
         const hist2 = raw2
           .map(e => ({
@@ -222,8 +232,9 @@
           }))
           .filter(e => e.ts > 0);
 
-        hist2.sort((a, b) => b.ts - a.ts);
-        const top20 = hist2.slice(0, 20);
+        const combined = hist1.concat(hist2);
+        combined.sort((a, b) => b.ts - a.ts);
+        const top20 = combined.slice(0, 20);
 
         const body = document.getElementById('historyBody');
         body.innerHTML = '';
