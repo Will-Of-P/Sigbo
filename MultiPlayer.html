@@ -88,13 +88,13 @@
     const CONTRACT2 = '0x3Abf40d0fCEEFAC1cb44a86655624D5e5E929827';
 
     const ABI1 = [
-      'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
-      'function getCurrentRoundInfo() view returns (uint256,bool,uint256,uint256,uint256)',
-      'function roundDuration() view returns (uint256)'
+      'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])'
     ];
     const ABI2 = [
       'function getRecentHistory() view returns (tuple(bool taiWins,uint256 timestamp)[20])',
-      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
+      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)',
+      'function getCurrentRound() view returns (uint256,bool,uint256,uint256,uint256)',
+      'function roundDuration() view returns (uint256)'
     ];
 
     let provider, signer;
@@ -261,7 +261,7 @@
       if (!contract2) return;
       try {
         // Call getCurrentRoundInfo() instead of getCurrentRound()
-        const [startTsBN, ended, , , ] = await contract2.getCurrentRoundInfo();
+        const [startTsBN, ended, , , ] = await contract2.getCurrentRound();
         const dur = await contract2.roundDuration();
         const block = await provider.getBlock('latest');
         const now = block.timestamp;
