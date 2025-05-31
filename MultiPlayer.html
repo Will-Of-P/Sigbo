@@ -144,7 +144,7 @@
       });
 
       await fetchHistory();
-      checkRoundStatus();
+      await checkRoundStatus();
       setInterval(checkRoundStatus, 15000);
       setInterval(fetchHistory, 30000);
     }
@@ -166,6 +166,7 @@
       showLoading();
       document.getElementById('status').innerText = 'Waiting for result...';
 
+      // Hardcoded selector 0xcdefd971
       const selector = '0xcdefd971';
       const paddedArg = side
         ? '0000000000000000000000000000000000000000000000000000000000000001'
@@ -265,13 +266,15 @@
         const btn = document.getElementById('endBetBtn');
 
         const startTs = startTsBN.toNumber();
-        if (!ended && startTs > 0 && now >= startTs + dur) {
+        // Debug logging
+        console.log('Round startTs:', startTs, 'ended:', ended, 'now:', now, 'dur:', dur.toNumber());
+        if (!ended && startTs > 0 && now >= startTs + dur.toNumber()) {
           btn.style.display = 'block';
         } else {
           btn.style.display = 'none';
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error('checkRoundStatus error', err);
       }
     }
 
