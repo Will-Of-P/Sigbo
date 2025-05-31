@@ -90,11 +90,13 @@
     const ABI1 = [
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])'
     ];
+
     const ABI2 = [
       'function getRecentHistory() view returns (tuple(bool taiWins,uint256 timestamp)[20])',
       'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)',
-      'function getCurrentRound() view returns (uint256,bool,uint256,uint256)', // Corrected
-      'function roundDuration() view returns (uint256)'
+      'function getCurrentRound() view returns (uint256,bool,uint256,uint256)',
+      'function roundDuration() view returns (uint256)',
+      'function endBet()'
     ];
 
     let provider, signer;
@@ -281,14 +283,11 @@
     async function endRound() {
       if (!contract2) return;
       try {
-        const selectorEnd = ethers.utils.id("endBet()").slice(0, 10);
-        await signer.sendTransaction({
-          to: CONTRACT2,
-          data: selectorEnd,
-          gasLimit: ethers.utils.hexlify(200000)
-        });
-      } catch {
-        alert('End round failed or not allowed yet');
+        await contract2.endBet({ gasLimit: 180000 });
+        document.getElementById('status').innerText = 'Round ended successfully.';
+      } catch (err) {
+        console.error('End round failed:', err);
+        document.getElementById('status').innerText = 'End round failed or not allowed yet.';
       }
     }
 
