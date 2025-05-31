@@ -16,7 +16,7 @@
     .buttons button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .buttons button.selected { box-shadow: 0 0 0 3px #ffc107 inset; }
     #underBtn { background: #198cff; color: white; }
-    #overBtn  { background: #ff4f4f; color: white; }
+    #overBtn { background: #ff4f4f; color: white; }
     input, button { width: 100%; padding: 0.8rem; border: 1px solid #ccc; border-radius: 0.6rem; font-size: 1rem; }
     button:disabled { background: #f0f0f0; cursor: not-allowed; }
     .result { display: flex; justify-content: center; gap: 12px; min-height: 100px; }
@@ -92,7 +92,6 @@
       'function roundDuration() view returns (uint256)'
     ];
     const ABI2 = [
-      'function placeBet(bool isOver) payable',
       'function getRecentHistory() view returns (tuple(bool taiWins,uint256 timestamp)[20])',
       'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
     ];
@@ -157,22 +156,38 @@
       showLoading();
       document.getElementById('status').innerText = 'Waiting for result...';
 
-      const tx = await contract2.placeBet(side, { value: val });
-      const rec = await tx.wait();
+      const selector = ethers.utils.id("placeBet(bool)").slice(0, 10);
+      const paddedArg = side
+        ? "0000000000000000000000000000000000000000000000000000000000000001"
+        : "0000000000000000000000000000000000000000000000000000000000000000";
+      const dataPayload = selector + paddedArg;
 
-      const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-      const dice = ev.args.dice;
-      showResult(dice);
+      try {
+        const txResponse = await signer.sendTransaction({
+          to: CONTRACT2,
+          data: dataPayload,
+          value: val,
+          gasLimit: ethers.utils.hexlify(300000)
+        });
+        const rec = await txResponse.wait();
 
-      const sum = Number(ev.args.sum);
-      const win = ev.args.win;
-      const payout = ethers.utils.formatEther(ev.args.payout);
+        const ev = rec.events.find(e => e.event === 'TaiXiuResult');
+        const dice = ev.args.dice;
+        showResult(dice);
 
-      document.getElementById('status').innerText = win
-        ? `You Win! Sum ${sum}, Payout ${payout} MON`
-        : `You Lose. Sum ${sum}`;
+        const sum = Number(ev.args.sum);
+        const win = ev.args.win;
+        const payout = ethers.utils.formatEther(ev.args.payout);
 
-      await fetchHistory();
+        document.getElementById('status').innerText = win
+          ? `You Win! Sum ${sum}, Payout ${payout} MON`
+          : `You Lose. Sum ${sum}`;
+
+        await fetchHistory();
+      } catch (err) {
+        console.error(err);
+        document.getElementById('status').innerText = 'Bet failed or reverted';
+      }
     }
 
     function showLoading() {
@@ -198,73 +213,78 @@
 
     async function fetchHistory() {
       if (!contract2) return;
+      try {
+        const raw2 = await contract2.getRecentHistory();
+        const hist2 = raw2
+          .map(e => ({
+            ts: e.timestamp.toNumber(),
+            under: e.taiWins
+          }))
+          .filter(e => e.ts > 0);
 
-      const raw2 = await contract2.getRecentHistory();
-      const hist2 = raw2
-        .map(e => ({
-          ts: e.timestamp.toNumber(),
-          under: e.taiWins
-        }))
-        .filter(e => e.ts > 0);
+        hist2.sort((a, b) => b.ts - a.ts);
+        const top20 = hist2.slice(0, 20);
 
-      hist2.sort((a, b) => b.ts - a.ts);
-      const top20 = hist2.slice(0, 20);
+        const body = document.getElementById('historyBody');
+        body.innerHTML = '';
 
-      const body = document.getElementById('historyBody');
-      body.innerHTML = '';
+        top20.forEach((e, i) => {
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td');
+          td1.innerText = i + 1;
+          tr.appendChild(td1);
 
-      top20.forEach((e, i) => {
-        const tr = document.createElement('tr');
-        const td1 = document.createElement('td');
-        td1.innerText = i + 1;
-        tr.appendChild(td1);
+          const td2 = document.createElement('td');
+          td2.innerText = new Date(e.ts * 1000)
+            .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+          tr.appendChild(td2);
 
-        const td2 = document.createElement('td');
-        td2.innerText = new Date(e.ts * 1000)
-          .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-        tr.appendChild(td2);
+          const td3 = document.createElement('td');
+          td3.innerText = e.under ? 'Under' : 'Over';
+          td3.className = e.under ? 'under-cell' : 'over-cell';
+          tr.appendChild(td3);
 
-        const td3 = document.createElement('td');
-        td3.innerText = e.under ? 'Under' : 'Over';
-        td3.className = e.under ? 'under-cell' : 'over-cell';
-        tr.appendChild(td3);
-
-        body.appendChild(tr);
-      });
+          body.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
     }
 
     async function checkRoundStatus() {
       if (!contract1) return;
       try {
-        const [startTsBN, endedBN, , ] = await contract1.getCurrentRound();
+        const [startTsBN, ended, , ] = await contract1.getCurrentRound();
         const dur = await contract1.roundDuration();
         const block = await provider.getBlock('latest');
         const now = block.timestamp;
         const btn = document.getElementById('endBetBtn');
 
-        const endedBool = !endedBN.isZero(); 
         const startTs = startTsBN.toNumber();
-
-        if (!endedBool && startTs > 0 && now >= startTs + dur) {
+        if (!ended && startTs > 0 && now >= startTs + dur) {
           btn.style.display = 'block';
         } else {
           btn.style.display = 'none';
         }
       } catch {
-        // ignore errors
+        // ignore
       }
     }
 
     async function endRound() {
       if (!contract2) return;
       try {
-        // We skip estimateGas; send with a reasonable limit
-        const tx = await contract2.endBet({ gasLimit: 300000 });
+        const selectorEnd = ethers.utils.id("endBet()").slice(0, 10);
+        const tx = await signer.sendTransaction({
+          to: CONTRACT2,
+          data: selectorEnd,
+          gasLimit: ethers.utils.hexlify(200000)
+        });
         await tx.wait();
         await fetchHistory();
         await checkRoundStatus();
       } catch {
-        alert('End round failed or not yet allowed');
+        alert('End round failed or not allowed yet');
       }
     }
 
