@@ -258,11 +258,11 @@
     }
 
     async function checkRoundStatus() {
-      if (!contract1) return;
+      if (!contract2) return;
       try {
         // Call getCurrentRoundInfo() instead of getCurrentRound()
-        const [startTsBN, ended, , , ] = await contract1.getCurrentRoundInfo();
-        const dur = await contract1.roundDuration();
+        const [startTsBN, ended, , , ] = await contract2.getCurrentRoundInfo();
+        const dur = await contract2.roundDuration();
         const block = await provider.getBlock('latest');
         const now = block.timestamp;
         const btn = document.getElementById('endBetBtn');
