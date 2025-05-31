@@ -89,7 +89,7 @@
 
     const ABI1 = [
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
-      'function getCurrentRound() view returns (uint256,bool,uint256,uint256,uint256)',
+      'function getCurrentRound() view returns (uint256,bool,uint256,uint256)',
       'function roundDuration() view returns (uint256)'
     ];
     const ABI2 = [
@@ -132,7 +132,6 @@
       document.getElementById('btnConnect').style.display = 'none';
       document.getElementById('btnDisconnect').style.display = 'block';
 
-      // Listen continuously for new results; show loading for 5s, then display
       contract2.on('TaiXiuResult', async (player, sideEvt, dice, sum, win, payout) => {
         showLoading();
         await new Promise(r => setTimeout(r, 5000));
@@ -141,14 +140,13 @@
           ? `You Win! Sum ${sum}, Payout ${ethers.utils.formatEther(payout)} MON`
           : `You Lose. Sum ${sum}`;
         await fetchHistory();
-        await checkRoundStatus();
+        checkRoundStatus();
       });
 
-      setInterval(fetchHistory, 30000);
-
       await fetchHistory();
-      await checkRoundStatus();
+      checkRoundStatus();
       setInterval(checkRoundStatus, 15000);
+      setInterval(fetchHistory, 30000);
     }
 
     function selectSide(isOver) {
@@ -168,7 +166,6 @@
       showLoading();
       document.getElementById('status').innerText = 'Waiting for result...';
 
-      // Hardcoded selector 0xcdefd971 for placeBet(bool)
       const selector = '0xcdefd971';
       const paddedArg = side
         ? '0000000000000000000000000000000000000000000000000000000000000001'
@@ -182,7 +179,6 @@
           value: val,
           gasLimit: ethers.utils.hexlify(300000)
         });
-        // Result will be handled by the event listener above
       } catch (err) {
         console.error(err);
         document.getElementById('status').innerText = 'Bet failed or reverted';
@@ -262,7 +258,7 @@
     async function checkRoundStatus() {
       if (!contract1) return;
       try {
-        const [startTsBN, ended, , , ] = await contract1.getCurrentRound();
+        const [startTsBN, ended, , ] = await contract1.getCurrentRound();
         const dur = await contract1.roundDuration();
         const block = await provider.getBlock('latest');
         const now = block.timestamp;
