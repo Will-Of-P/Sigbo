@@ -89,7 +89,7 @@
 
     const ABI1 = [
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
-      'function getCurrentRound() view returns (uint256,bool,uint256,uint256)',
+      'function getCurrentRound() view returns (uint256,bool,uint256,uint256,uint256)',
       'function roundDuration() view returns (uint256)'
     ];
     const ABI2 = [
@@ -132,7 +132,18 @@
       document.getElementById('btnConnect').style.display = 'none';
       document.getElementById('btnDisconnect').style.display = 'block';
 
-      contract2.on('TaiXiuResult', fetchHistory);
+      // Listen continuously for new results; show loading for 5s, then display
+      contract2.on('TaiXiuResult', async (player, sideEvt, dice, sum, win, payout) => {
+        showLoading();
+        await new Promise(r => setTimeout(r, 5000));
+        showResult(dice);
+        document.getElementById('status').innerText = win
+          ? `You Win! Sum ${sum}, Payout ${ethers.utils.formatEther(payout)} MON`
+          : `You Lose. Sum ${sum}`;
+        await fetchHistory();
+        await checkRoundStatus();
+      });
+
       setInterval(fetchHistory, 30000);
 
       await fetchHistory();
@@ -157,7 +168,7 @@
       showLoading();
       document.getElementById('status').innerText = 'Waiting for result...';
 
-      // Use hardcoded selector 0xcdefd971
+      // Hardcoded selector 0xcdefd971 for placeBet(bool)
       const selector = '0xcdefd971';
       const paddedArg = side
         ? '0000000000000000000000000000000000000000000000000000000000000001'
@@ -165,27 +176,13 @@
       const dataPayload = selector + paddedArg;
 
       try {
-        const txResponse = await signer.sendTransaction({
+        await signer.sendTransaction({
           to: CONTRACT2,
           data: dataPayload,
           value: val,
           gasLimit: ethers.utils.hexlify(300000)
         });
-        const rec = await txResponse.wait();
-
-        const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-        const dice = ev.args.dice;
-        showResult(dice);
-
-        const sum = Number(ev.args.sum);
-        const win = ev.args.win;
-        const payout = ethers.utils.formatEther(ev.args.payout);
-
-        document.getElementById('status').innerText = win
-          ? `You Win! Sum ${sum}, Payout ${payout} MON`
-          : `You Lose. Sum ${sum}`;
-
-        await fetchHistory();
+        // Result will be handled by the event listener above
       } catch (err) {
         console.error(err);
         document.getElementById('status').innerText = 'Bet failed or reverted';
@@ -265,7 +262,7 @@
     async function checkRoundStatus() {
       if (!contract1) return;
       try {
-        const [startTsBN, ended, , ] = await contract1.getCurrentRound();
+        const [startTsBN, ended, , , ] = await contract1.getCurrentRound();
         const dur = await contract1.roundDuration();
         const block = await provider.getBlock('latest');
         const now = block.timestamp;
@@ -286,14 +283,11 @@
       if (!contract2) return;
       try {
         const selectorEnd = ethers.utils.id("endBet()").slice(0, 10);
-        const tx = await signer.sendTransaction({
+        await signer.sendTransaction({
           to: CONTRACT2,
           data: selectorEnd,
           gasLimit: ethers.utils.hexlify(200000)
         });
-        await tx.wait();
-        await fetchHistory();
-        await checkRoundStatus();
       } catch {
         alert('End round failed or not allowed yet');
       }
