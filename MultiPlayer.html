@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #eef2f5; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 2rem; }
+    .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); width: 480px; display: flex; flex-direction: column; gap: 1.5rem; text-align: center; }
+    .section { display: flex; flex-direction: column; gap: 1rem; }
+    .buttons { display: flex; gap: 1rem; }
+    .buttons button { flex: 1; padding: 0.8rem; font-size: 1.1rem; border: none; border-radius: 0.6rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .buttons button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .buttons button.selected { box-shadow: 0 0 0 3px #ffc107 inset; }
+    #underBtn { background: #198cff; color: white; }
+    #overBtn  { background: #ff4f4f; color: white; }
+    input, button { width: 100%; padding: 0.8rem; border: 1px solid #ccc; border-radius: 0.6rem; font-size: 1rem; }
+    button:disabled { background: #f0f0f0; cursor: not-allowed; }
+    .result { display: flex; justify-content: center; gap: 12px; min-height: 100px; }
+    .result img { width: 80px; height: 80px; }
+    .spinning { animation: spin 1s linear infinite; opacity: 0.6; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #status { color: #333; min-height: 1.5rem; font-weight: bold; }
+    #endBetBtn { background: #28a745; color: white; margin-top: 1rem; display: none; }
+    #historyContainer { margin-top: 2rem; width: 480px; background: white; border-radius: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); overflow: hidden; }
+    #historyContainer h3 { margin: 0; padding: 1rem; background: #198cff; color: white; font-size: 1.2rem; text-align: center; }
+    #historyContainer table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    #historyContainer th, #historyContainer td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: center; }
+    #historyContainer th { background: #f7f7f7; position: sticky; top: 0; z-index: 1; }
+    #historyContainer tbody tr:nth-child(even) { background: #fafafa; }
+    .under-cell { background: #198cff; color: white; border-radius: 0.4rem; padding: 0.3rem; }
+    .over-cell { background: #ff4f4f; color: white; border-radius: 0.4rem; padding: 0.3rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="section">
+      <button id="btnConnect">Connect Wallet</button>
+      <button id="btnDisconnect" style="display:none; background:#6c757d; color:white;">Disconnect</button>
+      <p id="walletAddress">Not connected</p>
+    </div>
+    <div class="section">
+      <div class="buttons">
+        <button id="underBtn">Under (3–10)</button>
+        <button id="overBtn">Over (11–18)</button>
+      </div>
+      <input type="number" id="betAmount" placeholder="Amount of MON" min="0.01" step="0.01" disabled />
+      <button id="betBtn" disabled>Place Bet</button>
+      <button id="endBetBtn">End Round</button>
+    </div>
+    <div class="result" id="result"></div>
+    <p id="status">&nbsp;</p>
+  </div>
+
+  <div id="historyContainer">
+    <h3>Recent 20 Games</h3>
+    <table>
+      <thead><tr><th>#</th><th>Date & Time</th><th>Hand</th></tr></thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const { ethers } = window.ethers;
+    const WalletConnectProvider = window.WalletConnectProvider.default;
+    const providerOptions = {
+      walletconnect: {
+        package: WalletConnectProvider,
+        options: {
+          rpc: { [10143]: 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi' }
+        }
+      }
+    };
+    const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
+
+    const chainParams = {
+      chainId: '0x279F',
+      chainName: 'Monad Testnet',
+      nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 },
+      rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'],
+      blockExplorerUrls: ['https://explorer.monad.xyz']
+    };
+
+    const CONTRACT1 = '0x1C538a1E0F0D5a8430010315b9659b80Ba99E9E1';
+    const CONTRACT2 = '0x3Abf40d0fCEEFAC1cb44a86655624D5e5E929827';
+
+    const ABI1 = [
+      'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
+      'function getCurrentRound() view returns (uint256,uint256,uint256,uint256)', 
+      'function roundDuration() view returns (uint256)'
+    ];
+    const ABI2 = [
+      'function placeBet(bool isOver) payable',
+      'function getRecentHistory() view returns (tuple(bool taiWins,uint256 timestamp)[20])',
+      'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
+    ];
+
+    let provider, signer;
+    let contract1, contract2;
+    let side = null;
+
+    document.getElementById('btnConnect').onclick = connect;
+    document.getElementById('btnDisconnect').onclick = () => { web3Modal.clearCachedProvider(); window.location.reload(); };
+    document.getElementById('underBtn').onclick = () => selectSide(false);
+    document.getElementById('overBtn').onclick = () => selectSide(true);
+    document.getElementById('betBtn').onclick = placeBet;
+    document.getElementById('endBetBtn').onclick = endRound;
+
+    async function connect() {
+      let inst;
+      if (window.ethereum) {
+        inst = window.ethereum;
+        try {
+          await ensureNetwork(inst);
+          await inst.request({ method: 'eth_requestAccounts' });
+        } catch {
+          inst = await web3Modal.connect();
+        }
+      } else {
+        inst = await web3Modal.connect();
+      }
+
+      await ensureNetwork(inst);
+      provider = new ethers.providers.Web3Provider(inst);
+      signer = provider.getSigner();
+      contract1 = new ethers.Contract(CONTRACT1, ABI1, signer);
+      contract2 = new ethers.Contract(CONTRACT2, ABI2, signer);
+
+      document.getElementById('walletAddress').innerText = await signer.getAddress();
+      document.getElementById('btnConnect').style.display = 'none';
+      document.getElementById('btnDisconnect').style.display = 'block';
+
+      contract2.on('TaiXiuResult', fetchHistory);
+      setInterval(fetchHistory, 30000);
+
+      await fetchHistory();
+      await checkRoundStatus();
+      setInterval(checkRoundStatus, 15000);
+    }
+
+    function selectSide(isOver) {
+      side = isOver;
+      document.getElementById('underBtn').classList.toggle('selected', !isOver);
+      document.getElementById('overBtn').classList.toggle('selected', isOver);
+      document.getElementById('betAmount').disabled = false;
+      document.getElementById('betBtn').disabled = false;
+    }
+
+    async function placeBet() {
+      if (side === null) return alert('Choose Under or Over');
+      const amt = document.getElementById('betAmount').value;
+      if (!amt || Number(amt) <= 0) return alert('Enter amount');
+      const val = ethers.utils.parseEther(amt);
+
+      showLoading();
+      document.getElementById('status').innerText = 'Waiting for result...';
+
+      const tx = await contract2.placeBet(side, { value: val });
+      const rec = await tx.wait();
+
+      const ev = rec.events.find(e => e.event === 'TaiXiuResult');
+      const dice = ev.args.dice;
+      showResult(dice);
+
+      const sum = Number(ev.args.sum);
+      const win = ev.args.win;
+      const payout = ethers.utils.formatEther(ev.args.payout);
+
+      document.getElementById('status').innerText = win
+        ? `You Win! Sum ${sum}, Payout ${payout} MON`
+        : `You Lose. Sum ${sum}`;
+
+      await fetchHistory();
+    }
+
+    function showLoading() {
+      const r = document.getElementById('result');
+      r.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const img = document.createElement('img');
+        img.src = 'image/monad.png';
+        img.className = 'spinning';
+        r.appendChild(img);
+      }
+    }
+
+    function showResult(dice) {
+      const r = document.getElementById('result');
+      r.innerHTML = '';
+      dice.forEach(d => {
+        const img = document.createElement('img');
+        img.src = `image/${d}.png`;
+        r.appendChild(img);
+      });
+    }
+
+    async function fetchHistory() {
+      if (!contract1 || !contract2) return;
+
+      const raw1 = await contract1.getRecentTaiXiu();
+      const hist1 = raw1
+        .map(e => ({
+          ts: e.timestamp.toNumber(),
+          under: (e.side === 0)
+        }))
+        .filter(e => e.ts > 0);
+
+      const raw2 = await contract2.getRecentHistory();
+      const hist2 = raw2
+        .map(e => ({
+          ts: e.timestamp.toNumber(),
+          under: e.taiWins
+        }))
+        .filter(e => e.ts > 0);
+
+      const combined = hist1.concat(hist2);
+      combined.sort((a, b) => b.ts - a.ts);
+      const top20 = combined.slice(0, 20);
+
+      const body = document.getElementById('historyBody');
+      body.innerHTML = '';
+
+      top20.forEach((e, i) => {
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td');
+        td1.innerText = i + 1;
+        tr.appendChild(td1);
+
+        const td2 = document.createElement('td');
+        td2.innerText = new Date(e.ts * 1000)
+          .toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+        tr.appendChild(td2);
+
+        const td3 = document.createElement('td');
+        td3.innerText = e.under ? 'Under' : 'Over';
+        td3.className = e.under ? 'under-cell' : 'over-cell';
+        tr.appendChild(td3);
+
+        body.appendChild(tr);
+      });
+    }
+
+    async function checkRoundStatus() {
+      if (!contract1) return;
+      try {
+        const [startTs, ended, ,] = await contract1.getCurrentRound();
+        const dur = await contract1.roundDuration();
+        const block = await provider.getBlock('latest');
+        const now = block.timestamp;
+        const btn = document.getElementById('endBetBtn');
+
+        if (!ended && startTs > 0 && now >= startTs + dur) {
+          btn.style.display = 'block';
+        } else {
+          btn.style.display = 'none';
+        }
+      } catch {
+        // ignore errors
+      }
+    }
+
+    async function endRound() {
+      if (!contract2) return;
+      try {
+        const tx = await contract2.endBet();
+        await tx.wait();
+        await fetchHistory();
+        await checkRoundStatus();
+      } catch {
+        alert('End round failed');
+      }
+    }
+
+    async function ensureNetwork(obj) {
+      try {
+        const net = await obj.request({ method: 'eth_chainId' });
+        if (net !== chainParams.chainId) {
+          await obj.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainParams.chainId }] });
+        }
+      } catch (e) {
+        if (e.code === 4902) {
+          await obj.request({ method: 'wallet_addEthereumChain', params: [chainParams] });
+        }
+      }
+    }
+  </script>
+</body>
+</html>
