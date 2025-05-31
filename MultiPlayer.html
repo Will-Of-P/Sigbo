@@ -89,7 +89,7 @@
 
     const ABI1 = [
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
-      'function getCurrentRound() view returns (uint256,bool,uint256,uint256)',
+      'function getCurrentRoundInfo() view returns (uint256,bool,uint256,uint256,uint256)',
       'function roundDuration() view returns (uint256)'
     ];
     const ABI2 = [
@@ -132,6 +132,7 @@
       document.getElementById('btnConnect').style.display = 'none';
       document.getElementById('btnDisconnect').style.display = 'block';
 
+      // Listen continuously for new results; show loading for 5s, then display
       contract2.on('TaiXiuResult', async (player, sideEvt, dice, sum, win, payout) => {
         showLoading();
         await new Promise(r => setTimeout(r, 5000));
@@ -166,7 +167,7 @@
       showLoading();
       document.getElementById('status').innerText = 'Waiting for result...';
 
-      // Hardcoded selector 0xcdefd971
+      // Hardcoded selector 0xcdefd971 for placeBet(bool)
       const selector = '0xcdefd971';
       const paddedArg = side
         ? '0000000000000000000000000000000000000000000000000000000000000001'
@@ -259,15 +260,14 @@
     async function checkRoundStatus() {
       if (!contract1) return;
       try {
-        const [startTsBN, ended, , ] = await contract1.getCurrentRound();
+        // Call getCurrentRoundInfo() instead of getCurrentRound()
+        const [startTsBN, ended, , , ] = await contract1.getCurrentRoundInfo();
         const dur = await contract1.roundDuration();
         const block = await provider.getBlock('latest');
         const now = block.timestamp;
         const btn = document.getElementById('endBetBtn');
 
         const startTs = startTsBN.toNumber();
-        // Debug logging
-        console.log('Round startTs:', startTs, 'ended:', ended, 'now:', now, 'dur:', dur.toNumber());
         if (!ended && startTs > 0 && now >= startTs + dur.toNumber()) {
           btn.style.display = 'block';
         } else {
