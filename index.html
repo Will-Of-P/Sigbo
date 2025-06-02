@@ -152,7 +152,6 @@
         <button id="underBtn">Under (3–10)</button>
         <button id="overBtn">Over (11–18)</button>
       </div>
-      <!-- max="15" prevents values ≥ 15 -->
       <input
         type="number"
         id="betAmount"
@@ -184,7 +183,9 @@
       walletconnect: {
         package: WalletConnectProvider,
         options: {
-          rpc: { [10143]: 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi' }
+          rpc: {
+            [10143]: 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'
+          }
         }
       }
     };
@@ -209,7 +210,9 @@
 
     let provider, signer, contract;
     let side = null;
-    let lastDiceResult = []; // mảng lưu lại kết quả dice mới nhất
+    let lastDiceResult = [];         // lưu mảng kết quả dice [1..6]
+    let finalResultMsg = '';         // lưu câu "You Win..." hoặc "You Lose..."
+    let revealCount = 0;             // đếm bao nhiêu viên xúc xắc đã được mở
 
     const btnConnect    = document.getElementById('btnConnect');
     const btnDisconnect = document.getElementById('btnDisconnect');
@@ -224,7 +227,7 @@
     underBtn.onclick      = () => selectSide(0);
     overBtn.onclick       = () => selectSide(1);
 
-    // On every keystroke in the amount field, re‐check valid < 15
+    // Kiểm tra input mỗi khi gõ
     betInput.addEventListener('input', () => {
       const val = parseFloat(betInput.value);
       if (!betInput.value) {
@@ -234,23 +237,18 @@
         betBtn.disabled = true;
         statusTxt.innerText = 'Bet must be less than 15 MON';
       } else {
-        // If a side is already chosen, keep the button enabled
         betBtn.disabled = false;
         statusTxt.innerText = '';
       }
     });
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Revised selectSide: as soon as you pick "Under"/"Over", enable both fields
+    // Khi chọn Under/Over
     function selectSide(s) {
       side = s;
       underBtn.classList.toggle('selected', s === 0);
       overBtn.classList.toggle('selected', s === 1);
 
-      // Enable the amount input immediately
       betInput.disabled = false;
-
-      // Check current input–value: if it’s < 15 & > 0, enable button; otherwise disable
       const val = parseFloat(betInput.value);
       if (betInput.value && !isNaN(val) && val < 15) {
         betBtn.disabled = false;
@@ -260,6 +258,7 @@
       }
     }
 
+    // Khi bấm Place Bet
     betBtn.onclick = async () => {
       if (side === null) {
         alert('Choose a side first');
@@ -274,85 +273,87 @@
       }
       const val = ethers.utils.parseEther(amtStr);
 
-      showLoading();
+      showLoading();                 // hiển thị 3 ảnh Monad xoay
       setStatus('Waiting for result...');
 
       try {
+        // Gửi giao dịch
         const tx = await contract.placeBetBS(side, { value: val });
         const rec = await tx.wait();
-        await new Promise(r => setTimeout(r, 1500));
 
-        // Tìm event TaiXiuResult
+        // Lấy event TaiXiuResult
         const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-        lastDiceResult = ev.args.dice.map(d => Number(d)); // lưu lại mảng dice [1..6]
+        lastDiceResult = ev.args.dice.map(d => Number(d)); 
+        revealCount = 0;             // reset đếm reveal
 
-        // Giữ nguyên ảnh Monad trong .result cho đến khi người dùng click
-        setStatus(
-          `Click vào từng xúc xắc để xem kết quả. Sum = ${Number(ev.args.sum)}, ` +
-          (ev.args.win
-            ? `You Win, Payout ${ethers.utils.formatEther(ev.args.payout)} MON`
-            : 'You Lose.')
-        );
+        // Tạo chuỗi message tạm: "Click để mở kết quả. Sum = X"
+        const sum = Number(ev.args.sum);
+        finalResultMsg = ev.args.win
+          ? `You Win! Sum ${sum}, Payout ${ethers.utils.formatEther(ev.args.payout)} MON`
+          : `You Lose. Sum ${sum}`;
 
-        // Làm mới lịch sử
-        await fetchHistory();
+        // Hiển thị hướng dẫn click để reveal (chưa hiển thị finalResultMsg)
+        setStatus(`Click vào từng xúc xắc để xem kết quả. Sum = ${sum}`);
+
+        // Vẽ 3 ảnh Monad tĩnh (để user click)
+        renderClickableDice();
       } catch (err) {
         console.error(err);
         setStatus('Transaction failed or was rejected');
       }
     };
 
+    // Hiển thị 3 ảnh Monad đang quay
     function showLoading() {
       const r = document.getElementById('result');
       r.innerHTML = '';
-      // Hiển thị ba ảnh Monad đang quay
       for (let i = 0; i < 3; i++) {
         const img = document.createElement('img');
         img.src = 'image/monad.png';
         img.className = 'spinning';
         r.appendChild(img);
       }
-      // History có thể đang load lại
-      fetchHistory();
     }
 
-    function showResult(dice) {
-      // (Không dùng nữa, vì kết quả chỉ hiển thị khi user click)
-    }
-
-    // Bổ sung hàm renderResult: sau khi có lastDiceResult, vẫn giữ ảnh Monad cho đến khi click
+    // Sau khi có lastDiceResult, vẽ 3 ảnh Monad "tĩnh" để người dùng click
     function renderClickableDice() {
       const r = document.getElementById('result');
       r.innerHTML = '';
-      // Nếu chưa có kết quả mới, không làm gì
+      // Nếu chưa có kết quả, không làm gì
       if (!lastDiceResult.length) return;
 
       for (let i = 0; i < 3; i++) {
         const dieVal = lastDiceResult[i]; // số 1..6
         const img = document.createElement('img');
-        img.src = 'image/monad.png';
-        img.className = ''; // bớt class spinning, chỉ hiển thị tĩnh
+        img.src = 'image/monad.png';       // vẫn là placeholder Monad
+        img.className = '';                // bỏ class spinning
         img.style.cursor = 'pointer';
-        img.alt = `Die ${i + 1}`; 
-        // Khi user click vào xúc xắc thứ i, đổi ảnh thành mặt dice
+        img.alt = `Die ${i + 1}`;
+
+        // Mỗi khi click, thay ảnh placeholder bằng ảnh thực của xúc xắc
         img.addEventListener('click', function handler() {
           this.src = `image/${dieVal}.png`;
           this.removeEventListener('click', handler);
           this.style.cursor = 'default';
+
+          // Tăng revealCount; nếu đủ 3 thì show final message và cập nhật lịch sử
+          revealCount++;
+          if (revealCount === 3) {
+            setStatus(finalResultMsg);
+            fetchHistory();  // cập nhật bảng lịch sử ngay sau khi mở viên cuối
+          }
         });
+
         r.appendChild(img);
       }
     }
 
+    // Đặt status text và – nếu là guide “Click vào” – gọi renderClickableDice
     function setStatus(msg) {
       statusTxt.innerText = msg;
-      // Khi status thay đổi (sau khi có event), gọi renderClickableDice
-      // Nếu msg chứa "Click vào", tức chúng ta vừa có kết quả
-      if (msg.startsWith('Click vào')) {
-        renderClickableDice();
-      }
     }
 
+    // Lấy lịch sử từ blockchain và render vào bảng
     async function fetchHistory() {
       if (!contract) return;
       try {
@@ -368,7 +369,7 @@
         entries.forEach((e, i) => {
           const tr  = document.createElement('tr');
           const td1 = document.createElement('td');
-          td1.innerText = i + 1;     
+          td1.innerText = i + 1;
           tr.appendChild(td1);
 
           const td2 = document.createElement('td');
@@ -389,6 +390,7 @@
       }
     }
 
+    // Kết nối ví và khởi tạo contract
     async function connect() {
       let inst;
       if (window.ethereum) {
@@ -412,9 +414,10 @@
       btnConnect.style.display    = 'none';
       btnDisconnect.style.display = 'block';
 
+      // Khi mở trang lần đầu, load lịch sử (nếu muốn)
       await fetchHistory();
-      contract.on('TaiXiuResult', () => fetchHistory());
-      setInterval(fetchHistory, 30000);
+      // KHÔNG thêm listener tự động update lịch sử.
+      // KHÔNG setInterval để tránh tự động refresh.
     }
 
     async function ensureNetwork(obj) {
