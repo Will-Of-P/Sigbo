@@ -277,9 +277,9 @@
       setStatus('Waiting for result...');
     
       try {
-        const tx = await contract.placeBetBS(side, { value: val , gasLimit: 100000});
+        const tx = await contract.placeBetBS(side, {value: val, gasPrice: ethers.utils.parseUnits('51', 'gwei'), gasLimit: 100000});
         const rec = await tx.wait();
-    
+    , {});
         const ev = rec.events.find(e => e.event === 'TaiXiuResult');
         lastDiceResult = ev.args.dice.map(d => Number(d));
         revealCount = 0;
