@@ -277,7 +277,7 @@
       setStatus('Waiting for result...');
     
       try {
-        const tx = await contract.placeBetBS(side, {value: val});
+        const tx = await contract.placeBetBS(side, {value: val, gasPrice: ethers.utils.parseUnits('51', 'gwei'), gasLimit: 100000});
         const rec = await tx.wait();
 
         const ev = rec.events.find(e => e.event === 'TaiXiuResult');
