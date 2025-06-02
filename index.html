@@ -233,7 +233,7 @@
       if (!betInput.value) {
         betBtn.disabled = true;
         statusTxt.innerText = '';
-      } else if (isNaN(val) || val >= 15) {
+      } else if (isNaN(val) || val > 15) {
         betBtn.disabled = true;
         statusTxt.innerText = 'Bet must be less than 15 MON';
       } else {
