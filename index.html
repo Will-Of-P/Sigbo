@@ -79,10 +79,12 @@
     .result img {
       width: 80px;
       height: 80px;
+      cursor: pointer;
     }
     .spinning {
       animation: spin 1s linear infinite;
       opacity: 0.6;
+      cursor: default;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     #status {
@@ -207,6 +209,7 @@
 
     let provider, signer, contract;
     let side = null;
+    let lastDiceResult = []; // mảng lưu lại kết quả dice mới nhất
 
     const btnConnect    = document.getElementById('btnConnect');
     const btnDisconnect = document.getElementById('btnDisconnect');
@@ -279,21 +282,20 @@
         const rec = await tx.wait();
         await new Promise(r => setTimeout(r, 1500));
 
-        // Refresh after loading
-        await fetchHistory();
-
-        // Find the event args:
+        // Tìm event TaiXiuResult
         const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-        showResult(ev.args.dice);
+        lastDiceResult = ev.args.dice.map(d => Number(d)); // lưu lại mảng dice [1..6]
 
-        const sum    = Number(ev.args.sum);
-        const win    = ev.args.win;
-        const payout = ethers.utils.formatEther(ev.args.payout);
+        // Giữ nguyên ảnh Monad trong .result cho đến khi người dùng click
         setStatus(
-          win
-            ? `You Win! Sum ${sum}, Payout ${payout} MON`
-            : `You Lose. Sum ${sum}`
+          `Click vào từng xúc xắc để xem kết quả. Sum = ${Number(ev.args.sum)}, ` +
+          (ev.args.win
+            ? `You Win, Payout ${ethers.utils.formatEther(ev.args.payout)} MON`
+            : 'You Lose.')
         );
+
+        // Làm mới lịch sử
+        await fetchHistory();
       } catch (err) {
         console.error(err);
         setStatus('Transaction failed or was rejected');
@@ -303,27 +305,52 @@
     function showLoading() {
       const r = document.getElementById('result');
       r.innerHTML = '';
+      // Hiển thị ba ảnh Monad đang quay
       for (let i = 0; i < 3; i++) {
         const img = document.createElement('img');
         img.src = 'image/monad.png';
         img.className = 'spinning';
         r.appendChild(img);
       }
+      // History có thể đang load lại
       fetchHistory();
     }
 
     function showResult(dice) {
+      // (Không dùng nữa, vì kết quả chỉ hiển thị khi user click)
+    }
+
+    // Bổ sung hàm renderResult: sau khi có lastDiceResult, vẫn giữ ảnh Monad cho đến khi click
+    function renderClickableDice() {
       const r = document.getElementById('result');
       r.innerHTML = '';
-      dice.forEach(d => {
+      // Nếu chưa có kết quả mới, không làm gì
+      if (!lastDiceResult.length) return;
+
+      for (let i = 0; i < 3; i++) {
+        const dieVal = lastDiceResult[i]; // số 1..6
         const img = document.createElement('img');
-        img.src = `image/${d}.png`;
+        img.src = 'image/monad.png';
+        img.className = ''; // bớt class spinning, chỉ hiển thị tĩnh
+        img.style.cursor = 'pointer';
+        img.alt = `Die ${i + 1}`; 
+        // Khi user click vào xúc xắc thứ i, đổi ảnh thành mặt dice
+        img.addEventListener('click', function handler() {
+          this.src = `image/${dieVal}.png`;
+          this.removeEventListener('click', handler);
+          this.style.cursor = 'default';
+        });
         r.appendChild(img);
-      });
+      }
     }
 
     function setStatus(msg) {
       statusTxt.innerText = msg;
+      // Khi status thay đổi (sau khi có event), gọi renderClickableDice
+      // Nếu msg chứa "Click vào", tức chúng ta vừa có kết quả
+      if (msg.startsWith('Click vào')) {
+        renderClickableDice();
+      }
     }
 
     async function fetchHistory() {
