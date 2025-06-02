@@ -272,30 +272,26 @@
         return;
       }
       const val = ethers.utils.parseEther(amtStr);
-
-      showLoading();                 // hiển thị 3 ảnh Monad xoay
+    
+      showLoading();
       setStatus('Waiting for result...');
-
+    
       try {
-        // Gửi giao dịch
         const tx = await contract.placeBetBS(side, { value: val });
         const rec = await tx.wait();
-
-        // Lấy event TaiXiuResult
+    
         const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-        lastDiceResult = ev.args.dice.map(d => Number(d)); 
-        revealCount = 0;             // reset đếm reveal
-
-        // Tạo chuỗi message tạm: "Click để mở kết quả. Sum = X"
+        lastDiceResult = ev.args.dice.map(d => Number(d));
+        revealCount = 0;
+    
         const sum = Number(ev.args.sum);
         finalResultMsg = ev.args.win
           ? `You Win! Sum ${sum}, Payout ${ethers.utils.formatEther(ev.args.payout)} MON`
           : `You Lose. Sum ${sum}`;
-
-        // Hiển thị hướng dẫn click để reveal (chưa hiển thị finalResultMsg)
-        setStatus(`Click vào từng xúc xắc để xem kết quả. Sum = ${sum}`);
-
-        // Vẽ 3 ảnh Monad tĩnh (để user click)
+    
+        // **Chỉ hiển thị hướng dẫn “Click...” mà không kèm “Sum = …”**
+        setStatus('Click vào từng xúc xắc để xem kết quả.');
+    
         renderClickableDice();
       } catch (err) {
         console.error(err);
@@ -319,31 +315,28 @@
     function renderClickableDice() {
       const r = document.getElementById('result');
       r.innerHTML = '';
-      // Nếu chưa có kết quả, không làm gì
       if (!lastDiceResult.length) return;
-
+    
       for (let i = 0; i < 3; i++) {
-        const dieVal = lastDiceResult[i]; // số 1..6
+        const dieVal = lastDiceResult[i];
         const img = document.createElement('img');
-        img.src = 'image/monad.png';       // vẫn là placeholder Monad
-        img.className = '';                // bỏ class spinning
+        img.src = 'image/monad.png';
         img.style.cursor = 'pointer';
         img.alt = `Die ${i + 1}`;
-
-        // Mỗi khi click, thay ảnh placeholder bằng ảnh thực của xúc xắc
+    
         img.addEventListener('click', function handler() {
           this.src = `image/${dieVal}.png`;
           this.removeEventListener('click', handler);
           this.style.cursor = 'default';
-
-          // Tăng revealCount; nếu đủ 3 thì show final message và cập nhật lịch sử
+    
           revealCount++;
           if (revealCount === 3) {
+            // **Chỉ sau khi mở đủ 3 viên mới hiển thị “You Win…” hoặc “You Lose…”**
             setStatus(finalResultMsg);
-            fetchHistory();  // cập nhật bảng lịch sử ngay sau khi mở viên cuối
+            fetchHistory();
           }
         });
-
+    
         r.appendChild(img);
       }
     }
