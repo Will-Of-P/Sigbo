@@ -63,9 +63,8 @@
       border-radius: 0.6rem;
       font-size: 1rem;
     }
-    /* 👉 Added max="15" below so UI prevents ≥15 */
     input[type="number"] {
-      /* no additional style necessary; max attribute handles logic */
+      /* max="15" will still block ≥15 via browser */
     }
     button:disabled {
       background: #f0f0f0;
@@ -151,10 +150,7 @@
         <button id="underBtn">Under (3–10)</button>
         <button id="overBtn">Over (11–18)</button>
       </div>
-      <!-- 
-        ➤ Added max="15" attribute:
-           Now the browser’s native validation will prevent values ≥15.
-      -->
+      <!-- max="15" prevents values ≥ 15 -->
       <input
         type="number"
         id="betAmount"
@@ -225,38 +221,39 @@
     underBtn.onclick      = () => selectSide(0);
     overBtn.onclick       = () => selectSide(1);
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Whenever the user types in the “betAmount” field, re‐evaluate validity:
-    //   • Empty → disable “Place Bet”
-    //   • >= 15  → disable + show warning
-    //   • < 15   → enable if side is chosen
-    // ──────────────────────────────────────────────────────────────────────────
+    // On every keystroke in the amount field, re‐check valid < 15
     betInput.addEventListener('input', () => {
       const val = parseFloat(betInput.value);
       if (!betInput.value) {
-        // No value ⇒ disable button, clear status
         betBtn.disabled = true;
         statusTxt.innerText = '';
       } else if (isNaN(val) || val >= 15) {
-        // ≥ 15 ⇒ disable + warning
         betBtn.disabled = true;
         statusTxt.innerText = 'Bet must be less than 15 MON';
       } else {
-        // < 15 ⇒ enable if side is already selected
-        betBtn.disabled = side === null;
+        // If a side is already chosen, keep the button enabled
+        betBtn.disabled = false;
         statusTxt.innerText = '';
       }
     });
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Revised selectSide: as soon as you pick "Under"/"Over", enable both fields
     function selectSide(s) {
       side = s;
-      underBtn.classList.toggle('selected',  s === 0);
-      overBtn.classList.toggle('selected',   s === 1);
-      // Re‐check bet input now that side changed:
+      underBtn.classList.toggle('selected', s === 0);
+      overBtn.classList.toggle('selected', s === 1);
+
+      // Enable the amount input immediately
+      betInput.disabled = false;
+
+      // Check current input–value: if it’s < 15 & > 0, enable button; otherwise disable
       const val = parseFloat(betInput.value);
       if (betInput.value && !isNaN(val) && val < 15) {
         betBtn.disabled = false;
         statusTxt.innerText = '';
+      } else {
+        betBtn.disabled = true;
       }
     }
 
@@ -331,7 +328,6 @@
 
     async function fetchHistory() {
       if (!contract) return;
-
       try {
         const raw = await contract.getRecentTaiXiu();
         const entries = raw
@@ -344,16 +340,21 @@
 
         entries.forEach((e, i) => {
           const tr  = document.createElement('tr');
-          const td1 = document.createElement('td'); td1.innerText = i + 1;     tr.appendChild(td1);
+          const td1 = document.createElement('td');
+          td1.innerText = i + 1;     
+          tr.appendChild(td1);
+
           const td2 = document.createElement('td');
           td2.innerText = new Date(e.ts * 1000).toLocaleString('vi-VN', {
             timeZone: 'Asia/Ho_Chi_Minh'
           });
           tr.appendChild(td2);
+
           const td3 = document.createElement('td');
           td3.innerText = e.outcome ? 'Under' : 'Over';
           td3.className = e.outcome ? 'under-cell' : 'over-cell';
           tr.appendChild(td3);
+
           body.appendChild(tr);
         });
       } catch (err) {
