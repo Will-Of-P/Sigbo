@@ -8,31 +8,135 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #eef2f5; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 2rem; }
-    .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); width: 480px; display: flex; flex-direction: column; gap: 1.5rem; text-align: center; }
-    .section { display: flex; flex-direction: column; gap: 1rem; }
-    .buttons { display: flex; gap: 1rem; }
-    .buttons button { flex: 1; padding: 0.8rem; font-size: 1.1rem; border: none; border-radius: 0.6rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    .buttons button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .buttons button.selected { box-shadow: 0 0 0 3px #ffc107 inset; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 2rem;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      text-align: center;
+    }
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .buttons {
+      display: flex;
+      gap: 1rem;
+    }
+    .buttons button {
+      flex: 1;
+      padding: 0.8rem;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 0.6rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .buttons button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .buttons button.selected {
+      box-shadow: 0 0 0 3px #ffc107 inset;
+    }
     #underBtn { background: #198cff; color: white; }
     #overBtn  { background: #ff4f4f; color: white; }
-    input, button { width: 100%; padding: 0.8rem; border: 1px solid #ccc; border-radius: 0.6rem; font-size: 1rem; }
-    button:disabled { background: #f0f0f0; cursor: not-allowed; }
-    .result { display: flex; justify-content: center; gap: 12px; min-height: 100px; }
-    .result img { width: 80px; height: 80px; }
-    .spinning { animation: spin 1s linear infinite; opacity: 0.6; }
+    input, button {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 0.6rem;
+      font-size: 1rem;
+    }
+    /* 👉 Added max="15" below so UI prevents ≥15 */
+    input[type="number"] {
+      /* no additional style necessary; max attribute handles logic */
+    }
+    button:disabled {
+      background: #f0f0f0;
+      cursor: not-allowed;
+    }
+    .result {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      min-height: 100px;
+    }
+    .result img {
+      width: 80px;
+      height: 80px;
+    }
+    .spinning {
+      animation: spin 1s linear infinite;
+      opacity: 0.6;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #status { color: #333; min-height: 1.5rem; font-weight: bold; }
+    #status {
+      color: #333;
+      min-height: 1.5rem;
+      font-weight: bold;
+    }
     /* History Styles */
-    #historyContainer { margin-top: 2rem; width: 480px; background: white; border-radius: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1); overflow: hidden; }
-    #historyContainer h3 { margin: 0; padding: 1rem; background: #198cff; color: white; font-size: 1.2rem; text-align: center; }
-    #historyContainer table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-    #historyContainer th, #historyContainer td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: center; }
-    #historyContainer th { background: #f7f7f7; position: sticky; top: 0; z-index: 1; }
-    #historyContainer tbody tr:nth-child(even) { background: #fafafa; }
-    .under-cell { background: #198cff; color: white; border-radius: 0.4rem; }
-    .over-cell { background: #ff4f4f; color: white; border-radius: 0.4rem; }
+    #historyContainer {
+      margin-top: 2rem;
+      width: 480px;
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    #historyContainer h3 {
+      margin: 0;
+      padding: 1rem;
+      background: #198cff;
+      color: white;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    #historyContainer table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    #historyContainer th, #historyContainer td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+    }
+    #historyContainer th {
+      background: #f7f7f7;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #historyContainer tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .under-cell {
+      background: #198cff;
+      color: white;
+      border-radius: 0.4rem;
+    }
+    .over-cell {
+      background: #ff4f4f;
+      color: white;
+      border-radius: 0.4rem;
+    }
   </style>
 </head>
 <body>
@@ -47,7 +151,19 @@
         <button id="underBtn">Under (3–10)</button>
         <button id="overBtn">Over (11–18)</button>
       </div>
-      <input type="number" id="betAmount" placeholder="Amount of MON" min="0.01" step="0.01" disabled />
+      <!-- 
+        ➤ Added max="15" attribute:
+           Now the browser’s native validation will prevent values ≥15.
+      -->
+      <input
+        type="number"
+        id="betAmount"
+        placeholder="Amount of MON"
+        min="0.01"
+        step="0.01"
+        max="15"
+        disabled
+      />
       <button id="betBtn" disabled>Place Bet</button>
     </div>
     <div class="result" id="result"></div>
@@ -66,116 +182,229 @@
   <script>
     const { ethers } = window.ethers;
     const WalletConnectProvider = window.WalletConnectProvider.default;
-    const providerOptions = { walletconnect: { package: WalletConnectProvider, options: { rpc: { [10143]: 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi' } } } };
-    const web3Modal = new window.Web3Modal.default({ cacheProvider: true, providerOptions });
+    const providerOptions = {
+      walletconnect: {
+        package: WalletConnectProvider,
+        options: {
+          rpc: { [10143]: 'https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi' }
+        }
+      }
+    };
+    const web3Modal = new window.Web3Modal.default({
+      cacheProvider: true,
+      providerOptions
+    });
 
-    const chainParams = { chainId: '0x279F', chainName: 'Monad Testnet', nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 }, rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'], blockExplorerUrls: ['https://explorer.monad.xyz'] };
-    const CONTRACT = '0x559e00D6d8901E2a658c30FEeFdE5f319cBd0f82';
+    const chainParams = {
+      chainId: '0x279F',
+      chainName: 'Monad Testnet',
+      nativeCurrency: { name: 'Monad Token', symbol: 'MON', decimals: 18 },
+      rpcUrls: ['https://monad-testnet.g.alchemy.com/v2/tzvd5nlbtwh_aQQLFCNjVmXP8gkZFHZi'],
+      blockExplorerUrls: ['https://explorer.monad.xyz']
+    };
+    const CONTRACT = '0x5c10D58c70F1bfc2A4e842a62215f4008fda7dcf';
     const ABI = [
       'function placeBetBS(uint8 side) payable',
       'function getRecentTaiXiu() view returns (tuple(uint8 side,uint256 timestamp)[20])',
       'event TaiXiuResult(address indexed player, uint8 side, uint8[3] dice, uint8 sum, bool win, uint256 payout)'
     ];
 
-    let provider, signer, contract, side = null;
+    let provider, signer, contract;
+    let side = null;
 
-    document.getElementById('btnConnect').onclick = connect;
-    document.getElementById('btnDisconnect').onclick = () => { web3Modal.clearCachedProvider(); window.location.reload(); };
-    document.getElementById('underBtn').onclick = () => selectSide(0);
-    document.getElementById('overBtn').onclick = () => selectSide(1);
+    const btnConnect    = document.getElementById('btnConnect');
+    const btnDisconnect = document.getElementById('btnDisconnect');
+    const underBtn      = document.getElementById('underBtn');
+    const overBtn       = document.getElementById('overBtn');
+    const betInput      = document.getElementById('betAmount');
+    const betBtn        = document.getElementById('betBtn');
+    const statusTxt     = document.getElementById('status');
+
+    btnConnect.onclick    = connect;
+    btnDisconnect.onclick = () => { web3Modal.clearCachedProvider(); window.location.reload(); };
+    underBtn.onclick      = () => selectSide(0);
+    overBtn.onclick       = () => selectSide(1);
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Whenever the user types in the “betAmount” field, re‐evaluate validity:
+    //   • Empty → disable “Place Bet”
+    //   • >= 15  → disable + show warning
+    //   • < 15   → enable if side is chosen
+    // ──────────────────────────────────────────────────────────────────────────
+    betInput.addEventListener('input', () => {
+      const val = parseFloat(betInput.value);
+      if (!betInput.value) {
+        // No value ⇒ disable button, clear status
+        betBtn.disabled = true;
+        statusTxt.innerText = '';
+      } else if (isNaN(val) || val >= 15) {
+        // ≥ 15 ⇒ disable + warning
+        betBtn.disabled = true;
+        statusTxt.innerText = 'Bet must be less than 15 MON';
+      } else {
+        // < 15 ⇒ enable if side is already selected
+        betBtn.disabled = side === null;
+        statusTxt.innerText = '';
+      }
+    });
+
+    function selectSide(s) {
+      side = s;
+      underBtn.classList.toggle('selected',  s === 0);
+      overBtn.classList.toggle('selected',   s === 1);
+      // Re‐check bet input now that side changed:
+      const val = parseFloat(betInput.value);
+      if (betInput.value && !isNaN(val) && val < 15) {
+        betBtn.disabled = false;
+        statusTxt.innerText = '';
+      }
+    }
+
+    betBtn.onclick = async () => {
+      if (side === null) {
+        alert('Choose a side first');
+        return;
+      }
+      const amtStr = betInput.value;
+      if (!amtStr) return;
+      const amt = parseFloat(amtStr);
+      if (isNaN(amt) || amt >= 15) {
+        alert('Please enter an amount less than 15 MON');
+        return;
+      }
+      const val = ethers.utils.parseEther(amtStr);
+
+      showLoading();
+      setStatus('Waiting for result...');
+
+      try {
+        const tx = await contract.placeBetBS(side, { value: val });
+        const rec = await tx.wait();
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Refresh after loading
+        await fetchHistory();
+
+        // Find the event args:
+        const ev = rec.events.find(e => e.event === 'TaiXiuResult');
+        showResult(ev.args.dice);
+
+        const sum    = Number(ev.args.sum);
+        const win    = ev.args.win;
+        const payout = ethers.utils.formatEther(ev.args.payout);
+        setStatus(
+          win
+            ? `You Win! Sum ${sum}, Payout ${payout} MON`
+            : `You Lose. Sum ${sum}`
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus('Transaction failed or was rejected');
+      }
+    };
+
+    function showLoading() {
+      const r = document.getElementById('result');
+      r.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const img = document.createElement('img');
+        img.src = 'image/monad.png';
+        img.className = 'spinning';
+        r.appendChild(img);
+      }
+      fetchHistory();
+    }
+
+    function showResult(dice) {
+      const r = document.getElementById('result');
+      r.innerHTML = '';
+      dice.forEach(d => {
+        const img = document.createElement('img');
+        img.src = `image/${d}.png`;
+        r.appendChild(img);
+      });
+    }
+
+    function setStatus(msg) {
+      statusTxt.innerText = msg;
+    }
+
+    async function fetchHistory() {
+      if (!contract) return;
+
+      try {
+        const raw = await contract.getRecentTaiXiu();
+        const entries = raw
+          .map(e => ({ outcome: e[0], ts: e[1].toNumber() }))
+          .filter(e => e.ts > 0)
+          .sort((a, b) => b.ts - a.ts);
+
+        const body = document.getElementById('historyBody');
+        body.innerHTML = '';
+
+        entries.forEach((e, i) => {
+          const tr  = document.createElement('tr');
+          const td1 = document.createElement('td'); td1.innerText = i + 1;     tr.appendChild(td1);
+          const td2 = document.createElement('td');
+          td2.innerText = new Date(e.ts * 1000).toLocaleString('vi-VN', {
+            timeZone: 'Asia/Ho_Chi_Minh'
+          });
+          tr.appendChild(td2);
+          const td3 = document.createElement('td');
+          td3.innerText = e.outcome ? 'Under' : 'Over';
+          td3.className = e.outcome ? 'under-cell' : 'over-cell';
+          tr.appendChild(td3);
+          body.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Error fetching history:', err);
+      }
+    }
 
     async function connect() {
       let inst;
       if (window.ethereum) {
         inst = window.ethereum;
-        try { await ensureNetwork(inst); await inst.request({ method: 'eth_requestAccounts' }); } catch { inst = await web3Modal.connect(); }
-      } else inst = await web3Modal.connect();
+        try {
+          await ensureNetwork(inst);
+          await inst.request({ method: 'eth_requestAccounts' });
+        } catch {
+          inst = await web3Modal.connect();
+        }
+      } else {
+        inst = await web3Modal.connect();
+      }
 
       await ensureNetwork(inst);
       provider = new ethers.providers.Web3Provider(inst);
-      signer = provider.getSigner();
+      signer   = provider.getSigner();
       contract = new ethers.Contract(CONTRACT, ABI, signer);
 
       document.getElementById('walletAddress').innerText = await signer.getAddress();
-      document.getElementById('btnConnect').style.display = 'none';
-      document.getElementById('btnDisconnect').style.display = 'block';
+      btnConnect.style.display    = 'none';
+      btnDisconnect.style.display = 'block';
 
       await fetchHistory();
       contract.on('TaiXiuResult', () => fetchHistory());
       setInterval(fetchHistory, 30000);
     }
 
-    function selectSide(s) {
-      side = s;
-      document.getElementById('underBtn').classList.toggle('selected', s===0);
-      document.getElementById('overBtn').classList.toggle('selected', s===1);
-      document.getElementById('betAmount').disabled = false;
-      document.getElementById('betBtn').disabled = false;
-    }
-
-    document.getElementById('betBtn').onclick = async () => {
-      if (side === null) return alert('Choose a side');
-      const amt = document.getElementById('betAmount').value; if (!amt) return;
-      const val = ethers.utils.parseEther(amt);
-
-      showLoading(); setStatus('Waiting for result...');
-
-      const tx = await contract.placeBetBS(side, { value: val });
-      const rec = await tx.wait();
-      await new Promise(r => setTimeout(r, 1500));
-
-      // refresh after loading
-      await fetchHistory();
-
-      const ev = rec.events.find(e => e.event === 'TaiXiuResult');
-      showResult(ev.args.dice);
-
-      const sum = Number(ev.args.sum); const win = ev.args.win;
-      const payout = ethers.utils.formatEther(ev.args.payout);
-      setStatus(win ? `You Win! Sum ${sum}, Payout ${payout} MON` : `You Lose. Sum ${sum}`);
-    };
-
-    function showLoading() {
-      const r = document.getElementById('result'); r.innerHTML = '';
-      for (let i=0; i<3; i++) {
-        const img = document.createElement('img'); img.src = 'image/monad.png'; img.className = 'spinning'; r.appendChild(img);
-      }
-      fetchHistory();
-    }
-
-    function showResult(dice) {
-      const r = document.getElementById('result'); r.innerHTML = '';
-      dice.forEach(d => { const img = document.createElement('img'); img.src = `image/${d}.png`; r.appendChild(img); });
-    }
-
-    function setStatus(msg) { document.getElementById('status').innerText = msg; }
-
-    async function fetchHistory() {
-      if (!contract) return;
-
-      const raw = await contract.getRecentTaiXiu();
-      const entries = raw.map(e => ({ outcome: e[0], ts: e[1].toNumber() }))
-        .filter(e => e.ts > 0)
-        .sort((a, b) => b.ts - a.ts);
-
-      const body = document.getElementById('historyBody');
-      body.innerHTML = '';
-
-      entries.forEach((e, i) => {
-        const tr = document.createElement('tr');
-        const td1 = document.createElement('td'); td1.innerText = i+1; tr.appendChild(td1);
-        const td2 = document.createElement('td'); td2.innerText = new Date(e.ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }); tr.appendChild(td2);
-        const td3 = document.createElement('td'); td3.innerText = e.outcome ? 'Under' : 'Over'; td3.className = e.outcome ? 'under-cell' : 'over-cell'; tr.appendChild(td3);
-        body.appendChild(tr);
-      });
-    }
-
     async function ensureNetwork(obj) {
       try {
         const net = await obj.request({ method: 'eth_chainId' });
-        if (net !== chainParams.chainId) await obj.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainParams.chainId }] });
+        if (net !== chainParams.chainId) {
+          await obj.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: chainParams.chainId }]
+          });
+        }
       } catch (e) {
-        if (e.code === 4902) await obj.request({ method: 'wallet_addEthereumChain', params: [chainParams] });
+        if (e.code === 4902) {
+          await obj.request({
+            method: 'wallet_addEthereumChain',
+            params: [chainParams]
+          });
+        }
       }
     }
   </script>
